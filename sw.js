@@ -1,6 +1,6 @@
 const CACHE = 'nucleo-v1';
 const ASSETS = [
-  '/nucleo.html',
+  'nucleo.html',
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
   'https://unpkg.com/@babel/standalone/babel.min.js',

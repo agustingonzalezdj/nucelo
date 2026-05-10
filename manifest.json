@@ -2,7 +2,7 @@
   "name": "Núcleo",
   "short_name": "Núcleo",
   "description": "Tu segundo cerebro personal",
-  "start_url": "/nucleo.html",
+  "start_url": "nucleo.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
