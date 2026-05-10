@@ -1245,322 +1245,127 @@ function categorizarTranscript(text) {
 }
 
 function VoiceModal({ onClose, onSaved }) {
-  const [stage, setStage] = React.useState('ready'); // askperm | ready | recording | analyzing | done | error
-  const [transcript, setTranscript] = React.useState('');
-  const [interim, setInterim] = React.useState('');
-  const [elapsed, setElapsed] = React.useState(0);
+  const [text, setText] = React.useState('');
+  const [stage, setStage] = React.useState('input'); // input | analyzing | done
   const [result, setResult] = React.useState(null);
-  const [noSpeech, setNoSpeech] = React.useState(false);
-  const [micGranted, setMicGranted] = React.useState(false);
-  const recogRef = React.useRef(null);
-  const clockRef = React.useRef(null);
+  const textareaRef = React.useRef(null);
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const supported = !!SpeechRecognition;
-
-  // Paso 1: pedir permiso vía getUserMedia (único método que muestra el diálogo iOS)
-  // Este botón se muestra antes del círculo si no hay permiso
-  const askPermission = () => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        stream.getTracks().forEach(t => t.stop());
-        setMicGranted(true);
-      })
-      .catch(() => setStage('error'));
-  };
-
-  // Paso 2: grabar — llamado directamente desde onClick, sin Promises
-  // iOS requiere que SpeechRecognition.start() sea síncrono desde el gesto
-  const startRecording = () => {
-    if (!supported) { setStage('error'); return; }
-    setNoSpeech(false);
-    setTranscript(''); setInterim(''); setElapsed(0);
-    setStage('recording');
-
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const recog = new SpeechRecognition();
-    recog.lang = 'es-AR';
-    recog.continuous = !isIOS;
-    recog.interimResults = !isIOS;
-    recogRef.current = recog;
-    const stageRef = { current: 'recording' };
-    clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
-    recog.onresult = (e) => {
-      let fin = '', tmp = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
-        else tmp += e.results[i][0].transcript;
-      }
-      if (fin) setTranscript(t => t + fin);
-      if (!isIOS) setInterim(tmp);
-    };
-    recog.onerror = (ev) => {
-      if (ev.error === 'no-speech') { setNoSpeech(true); return; }
-      if (ev.error === 'aborted') return;
-      clearInterval(clockRef.current);
-      setStage('error');
-    };
-    recog.onend = () => {
-      if (stageRef.current === 'recording' && isIOS) {
-        try { recog.start(); } catch(e) {}
-      }
-    };
-    recogRef.current._stageRef = stageRef;
-    recog.start();
-  };
-
-  const stopRecording = () => {
-    clearInterval(clockRef.current);
-    if (recogRef.current) {
-      if (recogRef.current._stageRef) recogRef.current._stageRef.current = 'stopped';
-      try { recogRef.current.stop(); } catch(e) {}
-      recogRef.current = null;
-    }
-    const full = transcript + interim;
-    if (!full.trim()) { setStage('ready'); return; }
-    setTranscript(full.trim());
-    setInterim('');
-    setStage('analyzing');
-    setTimeout(() => {
-      const r = categorizarTranscript(full.trim());
-      setResult(r);
-      setStage('done');
-    }, 900);
-  };
+  React.useEffect(() => {
+    // Abrir teclado automáticamente
+    setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 100);
+  }, []);
 
   React.useEffect(() => {
     if (stage !== 'done' || !result) return;
-    const id = setTimeout(() => onSaved && onSaved({ ...result, text: transcript }), 2200);
+    const id = setTimeout(() => onSaved && onSaved({ ...result, text }), 2000);
     return () => clearTimeout(id);
   }, [stage, result]);
 
-  React.useEffect(() => () => {
-    clearInterval(clockRef.current);
-    if (recogRef.current) { try { recogRef.current.stop(); } catch(e){} }
-  }, []);
-
-  const tap = () => {
-    if (!micGranted) return; // no hacer nada si no hay permiso aún
-    if (stage === 'ready') startRecording();
-    else if (stage === 'recording') stopRecording();
+  const enviar = () => {
+    if (!text.trim()) return;
+    setStage('analyzing');
+    setTimeout(() => {
+      const r = categorizarTranscript(text.trim());
+      setResult(r);
+      setStage('done');
+    }, 700);
   };
 
   return (
     <div style={{
       position: 'fixed', inset: 0, background: '#000', zIndex: 90,
       display: 'flex', flexDirection: 'column',
-      animation: 'voiceFadeIn 0.3s ease-out',
+      fontFamily: '-apple-system, "SF Pro Display", system-ui, sans-serif',
     }}>
-      <style>{`
-        @keyframes voiceFadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes ringPulse {
-          0%,100% { box-shadow: 0 0 60px 8px rgba(255,255,255,0.20), 0 0 120px 30px rgba(255,255,255,0.06); transform: scale(1); }
-          50%     { box-shadow: 0 0 90px 16px rgba(255,255,255,0.45), 0 0 160px 50px rgba(255,255,255,0.16); transform: scale(1.025); }
-        }
-        @keyframes ringSpin {
-          0% { transform: rotate(0deg); opacity: 0.4 } 100% { transform: rotate(360deg); opacity: 0.6 }
-        }
-        @keyframes wave { 0%,100% { height: 8px } 50% { height: 36px } }
-        @keyframes coachIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
-        @keyframes recDot { 0%,100% { opacity: 1 } 50% { opacity: 0.2 } }
-      `}</style>
+      <style>{`@keyframes coachIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }`}</style>
 
-      {/* close + status */}
+      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '60px 24px 0',
+        padding: 'calc(env(safe-area-inset-top, 44px) + 16px) 20px 16px',
+        borderBottom: `0.5px solid ${PALETTE.border}`,
       }}>
-        <div style={{
-          fontSize: 9.5, fontWeight: 400, letterSpacing: 2.4, textTransform: 'uppercase',
-          color: PALETTE.text3,
-        }}>
-          {stage === 'ready' && 'Listo'}
-          {stage === 'recording' && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: PALETTE.text }}>
-              <span style={{ width: 6, height: 6, borderRadius: 3, background: '#fff', animation: 'recDot 1s ease-in-out infinite' }}/>
-              Grabando · {elapsed.toFixed(1)}s
-            </span>
-          )}
-          {stage === 'analyzing' && 'Analizando'}
+        <div style={{ fontSize: 11, fontWeight: 400, letterSpacing: 2, textTransform: 'uppercase', color: PALETTE.text3 }}>
+          {stage === 'input' && 'Escribí o dictá'}
+          {stage === 'analyzing' && 'Analizando...'}
           {stage === 'done' && 'Guardado'}
-          {stage === 'error' && 'Sin micrófono'}
         </div>
         <button onClick={onClose} style={{
-          width: 32, height: 32, borderRadius: 16, background: 'transparent',
+          width: 30, height: 30, borderRadius: 15, background: 'transparent',
           border: `0.5px solid ${PALETTE.borderStrong}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: PALETTE.text, cursor: 'pointer',
         }}>
-          <Icon name="x" size={14} sw={1.4}/>
+          <Icon name="x" size={13} sw={1.4}/>
         </button>
       </div>
 
-      {/* body */}
-      <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '0 28px', textAlign: 'center', gap: 36,
-        paddingBottom: 80,
-      }}>
-        {/* ECLIPSE RING */}
-        {!micGranted ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-            <button onClick={askPermission} style={{
-              width: 220, height: 220, borderRadius: '50%',
-              background: 'transparent',
-              border: '1.2px solid rgba(255,255,255,0.85)',
-              cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 12, color: PALETTE.text,
-              animation: 'ringPulse 4s ease-in-out infinite',
-            }}>
-              <Icon name="mic" size={36} sw={1.2}/>
+      {/* Body */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px 20px', gap: 20, overflowY: 'auto' }}>
+
+        {stage === 'input' && (
+          <>
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder={'una idea · un gasto · una tarea\n\nEj: "Pagué 5000 pesos de nafta"\nEj: "Llamar al médico mañana"\n\nPodés tocar el 🎤 del teclado para dictarlo'}
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                color: PALETTE.text, fontSize: 18, fontWeight: 300, lineHeight: 1.6,
+                letterSpacing: -0.2, resize: 'none', fontFamily: 'inherit',
+                caretColor: '#fff',
+              }}
+            />
+            <button
+              onClick={enviar}
+              disabled={!text.trim()}
+              style={{
+                width: '100%', padding: '16px', borderRadius: 16,
+                background: text.trim() ? '#fff' : PALETTE.surfaceStrong,
+                color: text.trim() ? '#000' : PALETTE.text3,
+                border: 'none', fontSize: 15, fontWeight: 500,
+                cursor: text.trim() ? 'pointer' : 'default',
+                transition: 'all 0.2s',
+                marginBottom: 'env(safe-area-inset-bottom, 16px)',
+              }}
+            >
+              Enviar
             </button>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 17, fontWeight: 300, color: PALETTE.text, marginBottom: 8 }}>
-                Activar micrófono
-              </div>
-              <div style={{ fontSize: 12, color: PALETTE.text3, fontWeight: 300, maxWidth: 240, lineHeight: 1.5 }}>
-                Tocá para habilitar el acceso — aparece el cartel del sistema
-              </div>
-            </div>
-          </div>
-        ) : (
-        <div style={{ position: 'relative', width: 240, height: 240,
-          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {stage === 'analyzing' && (
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: '50%',
-              border: '0.5px solid rgba(255,255,255,0.4)',
-              borderTopColor: 'rgba(255,255,255,0.95)',
-              animation: 'ringSpin 1.4s linear infinite',
-            }}/>
-          )}
-          <button onClick={tap} disabled={stage === 'analyzing' || stage === 'done'} style={{
-            width: 220, height: 220, borderRadius: '50%',
-            background: 'transparent',
-            border: `1.2px solid ${stage === 'done' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.85)'}`,
-            cursor: (stage === 'ready' || stage === 'recording') ? 'pointer' : 'default',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: PALETTE.text,
-            animation: stage === 'recording' ? 'ringPulse 2.2s ease-in-out infinite'
-                      : stage === 'ready' ? 'ringPulse 4s ease-in-out infinite' : 'none',
-            transition: 'border 0.3s',
-          }}>
-            {stage === 'ready' && <span style={{ fontSize: 30, opacity: 0.7 }}>✦</span>}
-            {stage === 'recording' && (
-              <div style={{ display: 'flex', gap: 5, alignItems: 'center', height: 50 }}>
-                {[0,1,2,3,4,5,6].map(i => (
-                  <div key={i} style={{
-                    width: 2, borderRadius: 2, background: '#fff',
-                    animation: `wave ${0.7 + (i % 3) * 0.15}s ease-in-out ${i * 0.06}s infinite`,
-                  }}/>
-                ))}
-              </div>
-            )}
-            {stage === 'analyzing' && (
-              <div style={{ fontSize: 11, fontWeight: 300, letterSpacing: 2.4, textTransform: 'uppercase', color: PALETTE.text2 }}>procesando</div>
-            )}
-            {stage === 'done' && <Icon name="check2" size={48} sw={1} color={PALETTE.text}/>}
-          </button>
-        </div>
-        )}
-
-        {micGranted && stage === 'ready' && (
-          <div>
-            <div style={{
-              fontSize: 18, fontWeight: 300, letterSpacing: -0.2, color: PALETTE.text,
-              marginBottom: 8,
-            }}>Tocá para hablar</div>
-            <div style={{ fontSize: 12, color: PALETTE.text3, fontWeight: 300, maxWidth: 260,
-              lineHeight: 1.5, letterSpacing: 0.1 }}>
-              una idea · un pago · una tarea · un gasto
-            </div>
-            {noSpeech && <div style={{ marginTop: 12, fontSize: 11, color: PALETTE.warn,
-              fontWeight: 300 }}>No escuché nada — intentá de nuevo</div>}
-          </div>
-        )}
-
-        {stage === 'recording' && (
-          <div style={{ minHeight: 90, maxWidth: 320 }}>
-            <div style={{
-              fontSize: 19, fontWeight: 300, letterSpacing: -0.3, color: PALETTE.text,
-              lineHeight: 1.4, minHeight: 54,
-            }}>
-              {transcript}{interim}
-              {!transcript && !interim && (
-                <span style={{ color: PALETTE.text3, fontSize: 14 }}>Hablá ahora...</span>
-              )}
-              <span style={{ opacity: 0.35, marginLeft: 2 }}>|</span>
-            </div>
-            <div style={{ marginTop: 18, fontSize: 10, color: PALETTE.text3,
-              fontWeight: 400, letterSpacing: 2, textTransform: 'uppercase' }}>
-              Tocá para terminar
-            </div>
-          </div>
+          </>
         )}
 
         {stage === 'analyzing' && (
-          <div style={{ maxWidth: 300 }}>
-            <div style={{
-              fontSize: 16, color: PALETTE.text2, fontWeight: 300,
-              fontStyle: 'italic', lineHeight: 1.4,
-            }}>"{transcript}"</div>
-          </div>
-        )}
-
-        {stage === 'error' && (
-          <div style={{ maxWidth: 280, textAlign: 'center' }}>
-            <div style={{ fontSize: 15, color: PALETTE.warn, fontWeight: 300, lineHeight: 1.5 }}>
-              No se pudo acceder al micrófono.
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <div style={{ fontSize: 16, color: PALETTE.text2, fontWeight: 300, fontStyle: 'italic', lineHeight: 1.5, textAlign: 'center', maxWidth: 300 }}>
+              "{text}"
             </div>
-            <div style={{ fontSize: 12, color: PALETTE.text3, marginTop: 8, fontWeight: 300 }}>
-              Habilitá el micrófono en los permisos del navegador e intentá de nuevo.
-            </div>
+            <div style={{ fontSize: 11, color: PALETTE.text3, letterSpacing: 2, textTransform: 'uppercase' }}>procesando</div>
           </div>
         )}
 
         {stage === 'done' && result && (
-          <div style={{ animation: 'coachIn 0.4s ease-out', maxWidth: 340, width: '100%' }}>
-            <div style={{
-              fontSize: 9.5, fontWeight: 400, letterSpacing: 2.4, textTransform: 'uppercase',
-              color: PALETTE.text3, marginBottom: 12,
-            }}>{result.tipo}</div>
-            <div style={{
-              fontSize: 17, color: PALETTE.text, lineHeight: 1.4, fontWeight: 300,
-              letterSpacing: -0.2, marginBottom: 18,
-            }}>"{transcript}"</div>
-
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 20, animation: 'coachIn 0.4s ease-out' }}>
+            <div style={{ fontSize: 9.5, fontWeight: 400, letterSpacing: 2.4, textTransform: 'uppercase', color: PALETTE.text3 }}>{result.tipo}</div>
+            <div style={{ fontSize: 17, color: PALETTE.text, lineHeight: 1.4, fontWeight: 300, letterSpacing: -0.2 }}>"{text}"</div>
             <div style={{
               display: 'flex', alignItems: 'center', gap: 14,
               padding: '14px 16px', borderRadius: 16,
-              background: 'rgba(255,255,255,0.04)',
-              border: `0.5px solid ${PALETTE.border}`,
-              textAlign: 'left',
+              background: 'rgba(255,255,255,0.04)', border: `0.5px solid ${PALETTE.border}`,
             }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: 'transparent',
                 border: `0.5px solid ${PALETTE.borderStrong}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: PALETTE.text,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: PALETTE.text,
               }}>
                 <Icon name={result.icon} size={16} sw={1.2}/>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, color: PALETTE.text, fontWeight: 400,
-                  letterSpacing: -0.05 }}>
-                  → {result.destino}
-                </div>
-                <div style={{ fontSize: 11, color: PALETTE.text3, marginTop: 3, fontWeight: 300 }}>
-                  {result.extra}
-                </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12.5, color: PALETTE.text, fontWeight: 400 }}>→ {result.destino}</div>
+                <div style={{ fontSize: 11, color: PALETTE.text3, marginTop: 3, fontWeight: 300 }}>{result.extra}</div>
               </div>
             </div>
-
-            <div style={{
-              marginTop: 16, fontSize: 12.5, color: PALETTE.text2,
-              fontStyle: 'italic', fontWeight: 300, lineHeight: 1.4,
-            }}>{result.coach}</div>
+            <div style={{ fontSize: 12.5, color: PALETTE.text2, fontStyle: 'italic', fontWeight: 300, lineHeight: 1.4 }}>{result.coach}</div>
           </div>
         )}
       </div>
@@ -1612,7 +1417,7 @@ function WelcomeScreen({ onVoice, onSkip }) {
         <div style={{
           fontSize: 13, fontWeight: 300, letterSpacing: 0.2,
           color: PALETTE.text2, textAlign: 'center',
-        }}>Tocá para hablar</div>
+        }}>Tocá para escribir</div>
 
         <button onClick={onSkip} style={{
           background: 'transparent', border: 'none',
