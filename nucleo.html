@@ -1251,71 +1251,66 @@ function VoiceModal({ onClose, onSaved }) {
   const [elapsed, setElapsed] = React.useState(0);
   const [result, setResult] = React.useState(null);
   const [noSpeech, setNoSpeech] = React.useState(false);
-  const [micGranted, setMicGranted] = React.useState(false);
   const recogRef = React.useRef(null);
   const clockRef = React.useRef(null);
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const supported = !!SpeechRecognition;
 
-  // Pedir permiso de micrófono explícitamente via getUserMedia
-  // Esto es lo único que hace aparecer el diálogo del sistema en iOS
-  const requestMicPermission = () => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        stream.getTracks().forEach(t => t.stop());
-        setMicGranted(true);
-      })
-      .catch(() => { setStage('error'); });
-  };
-
-  // Verificar si ya tenemos permiso al abrir
-  React.useEffect(() => {
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: 'microphone' })
-        .then(r => { if (r.state === 'granted') setMicGranted(true); })
-        .catch(() => {});
-    }
-  }, []);
-
   const startRecording = () => {
     if (!supported) { setStage('error'); return; }
     setNoSpeech(false);
     setTranscript(''); setInterim(''); setElapsed(0);
-    setStage('recording');
 
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const recog = new SpeechRecognition();
-    recog.lang = 'es-AR';
-    recog.continuous = !isIOS;
-    recog.interimResults = !isIOS;
-    recogRef.current = recog;
-    const stageRef = { current: 'recording' };
 
-    clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
+    const doRecog = () => {
+      setStage('recording');
+      const recog = new SpeechRecognition();
+      recog.lang = 'es-AR';
+      recog.continuous = !isIOS;
+      recog.interimResults = !isIOS;
+      recogRef.current = recog;
+      const stageRef = { current: 'recording' };
+      clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
+      recog.onresult = (e) => {
+        let fin = '', tmp = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
+          else tmp += e.results[i][0].transcript;
+        }
+        if (fin) setTranscript(t => t + fin);
+        if (!isIOS) setInterim(tmp);
+      };
+      recog.onerror = (ev) => {
+        if (ev.error === 'no-speech') { setNoSpeech(true); return; }
+        if (ev.error === 'aborted') return;
+        clearInterval(clockRef.current);
+        setStage('error');
+      };
+      recog.onend = () => {
+        if (stageRef.current === 'recording' && isIOS) {
+          try { recog.start(); } catch(e) {}
+        }
+      };
+      recogRef.current._stageRef = stageRef;
+      recog.start();
+    };
 
-    recog.onresult = (e) => {
-      let fin = '', tmp = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
-        else tmp += e.results[i][0].transcript;
-      }
-      if (fin) setTranscript(t => t + fin);
-      if (!isIOS) setInterim(tmp);
-    };
-    recog.onerror = (e) => {
-      if (e.error === 'no-speech') { setNoSpeech(true); return; }
-      if (e.error === 'aborted') return;
-      clearInterval(clockRef.current);
-      setStage('error');
-    };
-    recog.onend = () => {
-      if (stageRef.current === 'recording' && isIOS) {
-        try { recog.start(); } catch(e) {}
-      }
-    };
-    recogRef.current._stageRef = stageRef;
-    recog.start();
+    // En iOS: pedir permiso audio vía getUserMedia y arrancar SpeechRecognition
+    // en la misma cadena de Promise — sin esperar segundo tap
+    if (isIOS && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setStage('recording'); // mostrar UI de grabando mientras espera permiso
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          stream.getTracks().forEach(t => t.stop());
+          setMicGranted(true);
+          doRecog();
+        })
+        .catch(() => { setStage('error'); });
+    } else {
+      doRecog();
+    }
   };
 
   const stopRecording = () => {
@@ -1349,7 +1344,6 @@ function VoiceModal({ onClose, onSaved }) {
   }, []);
 
   const tap = () => {
-    if (!micGranted) { requestMicPermission(); return; }
     if (stage === 'ready') startRecording();
     else if (stage === 'recording') stopRecording();
   };
@@ -1460,19 +1454,11 @@ function VoiceModal({ onClose, onSaved }) {
             <div style={{
               fontSize: 18, fontWeight: 300, letterSpacing: -0.2, color: PALETTE.text,
               marginBottom: 8,
-            }}>{micGranted ? 'Tocá para hablar' : 'Tocá para activar el micrófono'}</div>
-            {micGranted && (
-              <div style={{ fontSize: 12, color: PALETTE.text3, fontWeight: 300, maxWidth: 260,
-                lineHeight: 1.5, letterSpacing: 0.1 }}>
-                una idea · un pago · una tarea · un gasto
-              </div>
-            )}
-            {!micGranted && (
-              <div style={{ fontSize: 12, color: PALETTE.text3, fontWeight: 300, maxWidth: 260,
-                lineHeight: 1.5, textAlign: 'center' }}>
-                Va a aparecer un cartel pidiendo permiso — aceptá para continuar
-              </div>
-            )}
+            }}>Tocá para hablar</div>
+            <div style={{ fontSize: 12, color: PALETTE.text3, fontWeight: 300, maxWidth: 260,
+              lineHeight: 1.5, letterSpacing: 0.1 }}>
+              una idea · un pago · una tarea · un gasto
+            </div>
             {noSpeech && <div style={{ marginTop: 12, fontSize: 11, color: PALETTE.warn,
               fontWeight: 300 }}>No escuché nada — intentá de nuevo</div>}
           </div>
