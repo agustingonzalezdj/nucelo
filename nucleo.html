@@ -1264,38 +1264,54 @@ function VoiceModal({ onClose, onSaved }) {
     setStage('recording');
 
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const recog = new SpeechRecognition();
-    recog.lang = 'es-AR';
-    recog.continuous = !isIOS;
-    recog.interimResults = !isIOS;
-    recogRef.current = recog;
-    const stageRef = { current: 'recording' };
 
-    clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
+    const doStart = () => {
+      const recog = new SpeechRecognition();
+      recog.lang = 'es-AR';
+      recog.continuous = !isIOS;
+      recog.interimResults = !isIOS;
+      recogRef.current = recog;
+      const stageRef = { current: 'recording' };
 
-    recog.onresult = (e) => {
-      let fin = '', tmp = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
-        else tmp += e.results[i][0].transcript;
-      }
-      if (fin) setTranscript(t => t + fin);
-      if (!isIOS) setInterim(tmp);
+      clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
+
+      recog.onresult = (e) => {
+        let fin = '', tmp = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
+          else tmp += e.results[i][0].transcript;
+        }
+        if (fin) setTranscript(t => t + fin);
+        if (!isIOS) setInterim(tmp);
+      };
+      recog.onerror = (e) => {
+        if (e.error === 'no-speech') { setNoSpeech(true); return; }
+        if (e.error === 'aborted') return;
+        clearInterval(clockRef.current);
+        setStage('error');
+      };
+      recog.onend = () => {
+        if (stageRef.current === 'recording' && isIOS) {
+          try { recog.start(); } catch(e) {}
+        }
+      };
+      recogRef.current._stageRef = stageRef;
+      recog.start();
     };
-    recog.onerror = (e) => {
-      if (e.error === 'no-speech') { setNoSpeech(true); return; }
-      if (e.error === 'aborted') return;
-      clearInterval(clockRef.current);
-      setStage('error');
-    };
-    // En iOS, recognition termina sola — reiniciar si el usuario no apretó stop
-    recog.onend = () => {
-      if (stageRef.current === 'recording' && isIOS) {
-        try { recog.start(); } catch(e) {}
-      }
-    };
-    recogRef.current._stageRef = stageRef;
-    recog.start();
+
+    // Pedir permiso explícito primero — necesario en iOS Safari
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          // Parar el stream inmediatamente, solo lo necesitamos para el permiso
+          stream.getTracks().forEach(t => t.stop());
+          doStart();
+        })
+        .catch(() => { setStage('error'); });
+    } else {
+      doStart();
+    }
+
   };
 
   const stopRecording = () => {
