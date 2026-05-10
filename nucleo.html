@@ -1251,66 +1251,62 @@ function VoiceModal({ onClose, onSaved }) {
   const [elapsed, setElapsed] = React.useState(0);
   const [result, setResult] = React.useState(null);
   const [noSpeech, setNoSpeech] = React.useState(false);
+  const [micGranted, setMicGranted] = React.useState(false);
   const recogRef = React.useRef(null);
   const clockRef = React.useRef(null);
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const supported = !!SpeechRecognition;
 
+  // Paso 1: pedir permiso vía getUserMedia (único método que muestra el diálogo iOS)
+  // Este botón se muestra antes del círculo si no hay permiso
+  const askPermission = () => {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        stream.getTracks().forEach(t => t.stop());
+        setMicGranted(true);
+      })
+      .catch(() => setStage('error'));
+  };
+
+  // Paso 2: grabar — llamado directamente desde onClick, sin Promises
+  // iOS requiere que SpeechRecognition.start() sea síncrono desde el gesto
   const startRecording = () => {
     if (!supported) { setStage('error'); return; }
     setNoSpeech(false);
     setTranscript(''); setInterim(''); setElapsed(0);
+    setStage('recording');
 
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    const doRecog = () => {
-      setStage('recording');
-      const recog = new SpeechRecognition();
-      recog.lang = 'es-AR';
-      recog.continuous = !isIOS;
-      recog.interimResults = !isIOS;
-      recogRef.current = recog;
-      const stageRef = { current: 'recording' };
-      clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
-      recog.onresult = (e) => {
-        let fin = '', tmp = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
-          else tmp += e.results[i][0].transcript;
-        }
-        if (fin) setTranscript(t => t + fin);
-        if (!isIOS) setInterim(tmp);
-      };
-      recog.onerror = (ev) => {
-        if (ev.error === 'no-speech') { setNoSpeech(true); return; }
-        if (ev.error === 'aborted') return;
-        clearInterval(clockRef.current);
-        setStage('error');
-      };
-      recog.onend = () => {
-        if (stageRef.current === 'recording' && isIOS) {
-          try { recog.start(); } catch(e) {}
-        }
-      };
-      recogRef.current._stageRef = stageRef;
-      recog.start();
+    const recog = new SpeechRecognition();
+    recog.lang = 'es-AR';
+    recog.continuous = !isIOS;
+    recog.interimResults = !isIOS;
+    recogRef.current = recog;
+    const stageRef = { current: 'recording' };
+    clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
+    recog.onresult = (e) => {
+      let fin = '', tmp = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
+        else tmp += e.results[i][0].transcript;
+      }
+      if (fin) setTranscript(t => t + fin);
+      if (!isIOS) setInterim(tmp);
     };
-
-    // En iOS: pedir permiso audio vía getUserMedia y arrancar SpeechRecognition
-    // en la misma cadena de Promise — sin esperar segundo tap
-    if (isIOS && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      setStage('recording'); // mostrar UI de grabando mientras espera permiso
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          stream.getTracks().forEach(t => t.stop());
-          setMicGranted(true);
-          doRecog();
-        })
-        .catch(() => { setStage('error'); });
-    } else {
-      doRecog();
-    }
+    recog.onerror = (ev) => {
+      if (ev.error === 'no-speech') { setNoSpeech(true); return; }
+      if (ev.error === 'aborted') return;
+      clearInterval(clockRef.current);
+      setStage('error');
+    };
+    recog.onend = () => {
+      if (stageRef.current === 'recording' && isIOS) {
+        try { recog.start(); } catch(e) {}
+      }
+    };
+    recogRef.current._stageRef = stageRef;
+    recog.start();
   };
 
   const stopRecording = () => {
@@ -1344,6 +1340,7 @@ function VoiceModal({ onClose, onSaved }) {
   }, []);
 
   const tap = () => {
+    if (!micGranted) return; // no hacer nada si no hay permiso aún
     if (stage === 'ready') startRecording();
     else if (stage === 'recording') stopRecording();
   };
@@ -1405,6 +1402,29 @@ function VoiceModal({ onClose, onSaved }) {
         paddingBottom: 80,
       }}>
         {/* ECLIPSE RING */}
+        {!micGranted ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
+            <button onClick={askPermission} style={{
+              width: 220, height: 220, borderRadius: '50%',
+              background: 'transparent',
+              border: '1.2px solid rgba(255,255,255,0.85)',
+              cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 12, color: PALETTE.text,
+              animation: 'ringPulse 4s ease-in-out infinite',
+            }}>
+              <Icon name="mic" size={36} sw={1.2}/>
+            </button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 17, fontWeight: 300, color: PALETTE.text, marginBottom: 8 }}>
+                Activar micrófono
+              </div>
+              <div style={{ fontSize: 12, color: PALETTE.text3, fontWeight: 300, maxWidth: 240, lineHeight: 1.5 }}>
+                Tocá para habilitar el acceso — aparece el cartel del sistema
+              </div>
+            </div>
+          </div>
+        ) : (
         <div style={{ position: 'relative', width: 240, height: 240,
           display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {stage === 'analyzing' && (
@@ -1426,9 +1446,7 @@ function VoiceModal({ onClose, onSaved }) {
                       : stage === 'ready' ? 'ringPulse 4s ease-in-out infinite' : 'none',
             transition: 'border 0.3s',
           }}>
-            {stage === 'ready' && (
-              <span style={{ fontSize: 30, opacity: 0.7 }}>✦</span>
-            )}
+            {stage === 'ready' && <span style={{ fontSize: 30, opacity: 0.7 }}>✦</span>}
             {stage === 'recording' && (
               <div style={{ display: 'flex', gap: 5, alignItems: 'center', height: 50 }}>
                 {[0,1,2,3,4,5,6].map(i => (
@@ -1440,16 +1458,14 @@ function VoiceModal({ onClose, onSaved }) {
               </div>
             )}
             {stage === 'analyzing' && (
-              <div style={{
-                fontSize: 11, fontWeight: 300, letterSpacing: 2.4, textTransform: 'uppercase',
-                color: PALETTE.text2,
-              }}>procesando</div>
+              <div style={{ fontSize: 11, fontWeight: 300, letterSpacing: 2.4, textTransform: 'uppercase', color: PALETTE.text2 }}>procesando</div>
             )}
             {stage === 'done' && <Icon name="check2" size={48} sw={1} color={PALETTE.text}/>}
           </button>
         </div>
+        )}
 
-        {stage === 'ready' && (
+        {micGranted && stage === 'ready' && (
           <div>
             <div style={{
               fontSize: 18, fontWeight: 300, letterSpacing: -0.2, color: PALETTE.text,
