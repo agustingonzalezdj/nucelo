@@ -1265,53 +1265,40 @@ function VoiceModal({ onClose, onSaved }) {
 
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    const doStart = () => {
-      const recog = new SpeechRecognition();
-      recog.lang = 'es-AR';
-      recog.continuous = !isIOS;
-      recog.interimResults = !isIOS;
-      recogRef.current = recog;
-      const stageRef = { current: 'recording' };
+    // IMPORTANTE: en iOS, SpeechRecognition.start() debe llamarse
+    // directamente desde el gesto del usuario (click), sin Promises intermedias.
+    // No usar getUserMedia como wrapper — SpeechRecognition pide permiso solo.
+    const recog = new SpeechRecognition();
+    recog.lang = 'es-AR';
+    recog.continuous = !isIOS;
+    recog.interimResults = !isIOS;
+    recogRef.current = recog;
+    const stageRef = { current: 'recording' };
 
-      clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
+    clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
 
-      recog.onresult = (e) => {
-        let fin = '', tmp = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
-          else tmp += e.results[i][0].transcript;
-        }
-        if (fin) setTranscript(t => t + fin);
-        if (!isIOS) setInterim(tmp);
-      };
-      recog.onerror = (e) => {
-        if (e.error === 'no-speech') { setNoSpeech(true); return; }
-        if (e.error === 'aborted') return;
-        clearInterval(clockRef.current);
-        setStage('error');
-      };
-      recog.onend = () => {
-        if (stageRef.current === 'recording' && isIOS) {
-          try { recog.start(); } catch(e) {}
-        }
-      };
-      recogRef.current._stageRef = stageRef;
-      recog.start();
+    recog.onresult = (e) => {
+      let fin = '', tmp = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
+        else tmp += e.results[i][0].transcript;
+      }
+      if (fin) setTranscript(t => t + fin);
+      if (!isIOS) setInterim(tmp);
     };
-
-    // Pedir permiso explícito primero — necesario en iOS Safari
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          // Parar el stream inmediatamente, solo lo necesitamos para el permiso
-          stream.getTracks().forEach(t => t.stop());
-          doStart();
-        })
-        .catch(() => { setStage('error'); });
-    } else {
-      doStart();
-    }
-
+    recog.onerror = (e) => {
+      if (e.error === 'no-speech') { setNoSpeech(true); return; }
+      if (e.error === 'aborted') return;
+      clearInterval(clockRef.current);
+      setStage('error');
+    };
+    recog.onend = () => {
+      if (stageRef.current === 'recording' && isIOS) {
+        try { recog.start(); } catch(e) {}
+      }
+    };
+    recogRef.current._stageRef = stageRef;
+    recog.start();
   };
 
   const stopRecording = () => {
@@ -2673,9 +2660,8 @@ window.FinanzasScreen = FinanzasScreen;
 
 // nutricion.jsx — Nutrición con IA (cámara → análisis macros)
 
-function NutricionScreen() {
-  const [view, setView] = React.useState('home'); // home | camera | calc
-  if (view === 'camera') return <CamaraNutricion onBack={() => setView('home')}/>;
+function NutricionScreen({ onOpenCamera }) {
+  const [view, setView] = React.useState('home'); // home | calc
   if (view === 'calc') return <CalculadoraMacros onBack={() => setView('home')}/>;
 
   const obj = DATA.macrosObjetivo;
@@ -2717,7 +2703,7 @@ function NutricionScreen() {
 
       {/* CTA cámara — feature estrella */}
       <div style={{ padding: '0 16px 22px' }}>
-        <button onClick={() => setView('camera')} style={{
+        <button onClick={() => onOpenCamera && onOpenCamera()} style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: 16,
           padding: 20, borderRadius: 22, cursor: 'pointer', textAlign: 'left',
           background: `linear-gradient(135deg, ${PALETTE.accentSoft}, rgba(255,255,255,0.02))`,
@@ -2929,7 +2915,7 @@ Donde p=proteínas, c=carbohidratos, gr/g=grasas, todos en gramos enteros. Si no
 
   return (
     <div style={{
-      position: 'absolute', inset: 0, background: '#000', zIndex: 50,
+      position: 'fixed', inset: 0, background: '#000', zIndex: 100,
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
       {/* viewfinder */}
@@ -3450,11 +3436,12 @@ function App() {
   const [voiceOpen, setVoiceOpen] = React.useState(false);
   const [toast, setToast] = React.useState(null);
   const [slideIdx, setSlideIdx] = React.useState(0);
+  const [cameraOpen, setCameraOpen] = React.useState(false);
   const carouselRef = React.useRef(null);
 
-  const openVoice = () => { setVoiceOpen(true); };
-  const closeVoice = () => { setVoiceOpen(false); setWelcome(false); };
-  const onSaved = (example) => { setVoiceOpen(false); setWelcome(false); setToast(example); };
+  const openVoice = () => { setWelcome(false); setVoiceOpen(true); };
+  const closeVoice = () => { setVoiceOpen(false); };
+  const onSaved = (example) => { setVoiceOpen(false); setToast(example); };
   const skipWelcome = () => setWelcome(false);
   const showWelcomeAgain = () => setWelcome(true);
 
@@ -3482,7 +3469,7 @@ function App() {
     agenda: <AgendaScreen/>,
     tareas: <TareasScreen/>,
     finanzas: <FinanzasScreen/>,
-    nutricion: <NutricionScreen/>,
+    nutricion: <NutricionScreen onOpenCamera={() => setCameraOpen(true)}/>,
     habitos: <HabitosScreen/>,
     notas: <NotasScreen/>,
     metas: <MetasScreen/>,
@@ -3524,7 +3511,7 @@ function App() {
             if (slide.key === 'hoy')       content = <HoyScreen onVoice={openVoice} goTab={goTabMobile}/>;
             else if (slide.key === 'agenda')    content = <AgendaScreen/>;
             else if (slide.key === 'finanzas')  content = <FinanzasScreen/>;
-            else if (slide.key === 'nutricion') content = <NutricionScreen/>;
+            else if (slide.key === 'nutricion') content = <NutricionScreen onOpenCamera={() => setCameraOpen(true)}/>;
             else if (slide.key === 'habitos')   content = <HabitosScreen/>;
             else if (slide.key === 'notas')     content = <NotasScreen/>;
             else if (slide.key === 'metas')     content = <MetasScreen/>;
@@ -3588,6 +3575,7 @@ function App() {
         {toast && <Toast example={toast} onDone={() => setToast(null)}/>}
         {welcome && <WelcomeScreen onVoice={openVoice} onSkip={skipWelcome}/>}
         {voiceOpen && <VoiceModal onClose={closeVoice} onSaved={onSaved}/>}
+        {cameraOpen && <CamaraNutricion onBack={() => setCameraOpen(false)}/>}
       </div>
     );
   }
@@ -3607,6 +3595,7 @@ function App() {
       {welcome && <WelcomeScreen onVoice={openVoice} onSkip={skipWelcome}/>}
       {!welcome && !voiceOpen && <DynamicIsland onVoice={openVoice} listening={false} isMobile={false}/>}
       {voiceOpen && <VoiceModal onClose={closeVoice} onSaved={onSaved}/>}
+      {cameraOpen && <CamaraNutricion onBack={() => setCameraOpen(false)}/>}
       {!welcome && <TabBar tab={tab} setTab={setTab} isMobile={false}/>}
     </div>
   );
