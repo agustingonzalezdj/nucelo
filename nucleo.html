@@ -1,0 +1,3631 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Núcleo — Tu segundo cerebro</title>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#000000"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Núcleo"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #050505; overflow: hidden; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  #root { height: 100%; }
+  *::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+  button { font-family: inherit; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel">
+
+// iOS.jsx — Simplified iOS 26 (Liquid Glass) device frame
+// Based on the iOS 26 UI Kit + Figma status bar spec. No assets, no deps.
+// Exports: IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSList, IOSListRow, IOSKeyboard
+
+// ─────────────────────────────────────────────────────────────
+// Status bar
+// ─────────────────────────────────────────────────────────────
+function IOSStatusBar({ dark = false, time = '9:41' }) {
+  const c = dark ? '#fff' : '#000';
+  return (
+    <div style={{
+      display: 'flex', gap: 154, alignItems: 'center', justifyContent: 'center',
+      padding: '21px 24px 19px', boxSizing: 'border-box',
+      position: 'relative', zIndex: 20, width: '100%',
+    }}>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 1.5 }}>
+        <span style={{
+          fontFamily: '-apple-system, "SF Pro", system-ui', fontWeight: 590,
+          fontSize: 17, lineHeight: '22px', color: c,
+        }}>{time}</span>
+      </div>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, paddingTop: 1, paddingRight: 1 }}>
+        <svg width="19" height="12" viewBox="0 0 19 12">
+          <rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7" fill={c}/>
+          <rect x="4.8" y="5" width="3.2" height="7" rx="0.7" fill={c}/>
+          <rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7" fill={c}/>
+          <rect x="14.4" y="0" width="3.2" height="12" rx="0.7" fill={c}/>
+        </svg>
+        <svg width="17" height="12" viewBox="0 0 17 12">
+          <path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z" fill={c}/>
+          <path d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z" fill={c}/>
+          <circle cx="8.5" cy="10.5" r="1.5" fill={c}/>
+        </svg>
+        <svg width="27" height="13" viewBox="0 0 27 13">
+          <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke={c} strokeOpacity="0.35" fill="none"/>
+          <rect x="2" y="2" width="20" height="9" rx="2" fill={c}/>
+          <path d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill={c} fillOpacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Liquid glass pill — blur + tint + shine
+// ─────────────────────────────────────────────────────────────
+function IOSGlassPill({ children, dark = false, style = {} }) {
+  return (
+    <div style={{
+      height: 44, minWidth: 44, borderRadius: 9999,
+      position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: dark
+        ? '0 2px 6px rgba(0,0,0,0.35), 0 6px 16px rgba(0,0,0,0.2)'
+        : '0 1px 3px rgba(0,0,0,0.07), 0 3px 10px rgba(0,0,0,0.06)',
+      ...style,
+    }}>
+      {/* blur + tint */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.28)' : 'rgba(255,255,255,0.5)',
+      }} />
+      {/* shine */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15), inset -1px -1px 1px rgba(255,255,255,0.08)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '0 4px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Navigation bar — glass pills + large title
+// ─────────────────────────────────────────────────────────────
+function IOSNavBar({ title = 'Title', dark = false, trailingIcon = true }) {
+  const muted = dark ? 'rgba(255,255,255,0.6)' : '#404040';
+  const text = dark ? '#fff' : '#000';
+  const pillIcon = (content) => (
+    <IOSGlassPill dark={dark}>
+      <div style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {content}
+      </div>
+    </IOSGlassPill>
+  );
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 10,
+      paddingTop: 62, paddingBottom: 10, position: 'relative', zIndex: 5,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+      }}>
+        {/* back chevron */}
+        {pillIcon(
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" style={{ marginLeft: -1 }}>
+            <path d="M10 2L2 10l8 8" stroke={muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+        {/* trailing ellipsis */}
+        {trailingIcon && pillIcon(
+          <svg width="22" height="6" viewBox="0 0 22 6">
+            <circle cx="3" cy="3" r="2.5" fill={muted}/>
+            <circle cx="11" cy="3" r="2.5" fill={muted}/>
+            <circle cx="19" cy="3" r="2.5" fill={muted}/>
+          </svg>
+        )}
+      </div>
+      {/* large title */}
+      <div style={{
+        padding: '0 16px',
+        fontFamily: '-apple-system, system-ui',
+        fontSize: 34, fontWeight: 700, lineHeight: '41px',
+        color: text, letterSpacing: 0.4,
+      }}>{title}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Grouped list (inset card, r:26) + row (52px)
+// ─────────────────────────────────────────────────────────────
+function IOSListRow({ title, detail, icon, chevron = true, isLast = false, dark = false }) {
+  const text = dark ? '#fff' : '#000';
+  const sec = dark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)';
+  const ter = dark ? 'rgba(235,235,245,0.3)' : 'rgba(60,60,67,0.3)';
+  const sep = dark ? 'rgba(84,84,88,0.65)' : 'rgba(60,60,67,0.12)';
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', minHeight: 52,
+      padding: '0 16px', position: 'relative',
+      fontFamily: '-apple-system, system-ui', fontSize: 17,
+      letterSpacing: -0.43,
+    }}>
+      {icon && (
+        <div style={{
+          width: 30, height: 30, borderRadius: 7, background: icon,
+          marginRight: 12, flexShrink: 0,
+        }} />
+      )}
+      <div style={{ flex: 1, color: text }}>{title}</div>
+      {detail && <span style={{ color: sec, marginRight: 6 }}>{detail}</span>}
+      {chevron && (
+        <svg width="8" height="14" viewBox="0 0 8 14" style={{ flexShrink: 0 }}>
+          <path d="M1 1l6 6-6 6" stroke={ter} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+      {!isLast && (
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0,
+          left: icon ? 58 : 16, height: 0.5, background: sep,
+        }} />
+      )}
+    </div>
+  );
+}
+
+function IOSList({ header, children, dark = false }) {
+  const hc = dark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)';
+  const bg = dark ? '#1C1C1E' : '#fff';
+  return (
+    <div>
+      {header && (
+        <div style={{
+          fontFamily: '-apple-system, system-ui', fontSize: 13,
+          color: hc, textTransform: 'uppercase',
+          padding: '8px 36px 6px', letterSpacing: -0.08,
+        }}>{header}</div>
+      )}
+      <div style={{
+        background: bg, borderRadius: 26,
+        margin: '0 16px', overflow: 'hidden',
+      }}>{children}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Device frame
+// ─────────────────────────────────────────────────────────────
+function IOSDevice({
+  children, width = 402, height = 874, dark = false,
+  title, keyboard = false,
+}) {
+  return (
+    <div style={{
+      width, height, borderRadius: 48, overflow: 'hidden',
+      position: 'relative', background: dark ? '#000' : '#F2F2F7',
+      boxShadow: '0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+    }}>
+      {/* dynamic island */}
+      <div style={{
+        position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
+        width: 126, height: 37, borderRadius: 24, background: '#000', zIndex: 50,
+      }} />
+      {/* status bar (absolute) */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <IOSStatusBar dark={dark} />
+      </div>
+      {/* nav + content */}
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {title !== undefined && <IOSNavBar title={title} dark={dark} />}
+        <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+        {keyboard && <IOSKeyboard dark={dark} />}
+      </div>
+      {/* home indicator — always on top */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 60,
+        height: 34, display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+        paddingBottom: 8, pointerEvents: 'none',
+      }}>
+        <div style={{
+          width: 139, height: 5, borderRadius: 100,
+          background: dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Keyboard — iOS 26 liquid glass
+// ─────────────────────────────────────────────────────────────
+function IOSKeyboard({ dark = false }) {
+  const glyph = dark ? 'rgba(255,255,255,0.7)' : '#595959';
+  const sugg = dark ? 'rgba(255,255,255,0.6)' : '#333';
+  const keyBg = dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)';
+
+  // special-key icons
+  const icons = {
+    shift: <svg width="19" height="17" viewBox="0 0 19 17"><path d="M9.5 1L1 9.5h4.5V16h8V9.5H18L9.5 1z" fill={glyph}/></svg>,
+    del: <svg width="23" height="17" viewBox="0 0 23 17"><path d="M7 1h13a2 2 0 012 2v11a2 2 0 01-2 2H7l-6-7.5L7 1z" fill="none" stroke={glyph} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 5l7 7M17 5l-7 7" stroke={glyph} strokeWidth="1.6" strokeLinecap="round"/></svg>,
+    ret: <svg width="20" height="14" viewBox="0 0 20 14"><path d="M18 1v6H4m0 0l4-4M4 7l4 4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  };
+
+  const key = (content, { w, flex, ret, fs = 25, k } = {}) => (
+    <div key={k} style={{
+      height: 42, borderRadius: 8.5,
+      flex: flex ? 1 : undefined, width: w, minWidth: 0,
+      background: ret ? '#08f' : keyBg,
+      boxShadow: '0 1px 0 rgba(0,0,0,0.075)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: '-apple-system, "SF Compact", system-ui',
+      fontSize: fs, fontWeight: 458, color: ret ? '#fff' : glyph,
+    }}>{content}</div>
+  );
+
+  const row = (keys, pad = 0) => (
+    <div style={{ display: 'flex', gap: 6.5, justifyContent: 'center', padding: `0 ${pad}px` }}>
+      {keys.map(l => key(l, { flex: true, k: l }))}
+    </div>
+  );
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 15, borderRadius: 27, overflow: 'hidden',
+      padding: '11px 0 2px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      boxShadow: dark
+        ? '0 -2px 20px rgba(0,0,0,0.09)'
+        : '0 -1px 6px rgba(0,0,0,0.018), 0 -3px 20px rgba(0,0,0,0.012)',
+    }}>
+      {/* liquid glass bg — same recipe as nav pills */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.14)' : 'rgba(255,255,255,0.25)',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* autocorrect bar */}
+      <div style={{
+        display: 'flex', gap: 20, alignItems: 'center',
+        padding: '8px 22px 13px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {['"The"', 'the', 'to'].map((w, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <div style={{ width: 1, height: 25, background: '#ccc', opacity: 0.3 }} />}
+            <div style={{
+              flex: 1, textAlign: 'center',
+              fontFamily: '-apple-system, system-ui', fontSize: 17,
+              color: sugg, letterSpacing: -0.43, lineHeight: '22px',
+            }}>{w}</div>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* key layout */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 13,
+        padding: '0 6.5px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {row(['q','w','e','r','t','y','u','i','o','p'])}
+        {row(['a','s','d','f','g','h','j','k','l'], 20)}
+        <div style={{ display: 'flex', gap: 14.25, alignItems: 'center' }}>
+          {key(icons.shift, { w: 45, k: 'shift' })}
+          <div style={{ display: 'flex', gap: 6.5, flex: 1 }}>
+            {['z','x','c','v','b','n','m'].map(l => key(l, { flex: true, k: l }))}
+          </div>
+          {key(icons.del, { w: 45, k: 'del' })}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {key('ABC', { w: 92.25, fs: 18, k: 'abc' })}
+          {key('', { flex: true, k: 'space' })}
+          {key(icons.ret, { w: 92.25, ret: true, k: 'ret' })}
+        </div>
+      </div>
+
+      {/* bottom spacer (emoji+mic area, icons omitted) */}
+      <div style={{ height: 56, width: '100%', position: 'relative' }} />
+    </div>
+  );
+}
+
+Object.assign(window, {
+  IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSList, IOSListRow, IOSKeyboard,
+});
+
+
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "palette": ["#D97757", "#29261b", "#f6f4ef"],
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        options={['#D97757', '#2A6FDB', '#1F8A5B', '#7A5AE0']}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakColor  label="Palette" value={t.palette}
+//                        options={[['#D97757', '#29261b', '#f6f4ef'],
+//                                  ['#475569', '#0f172a', '#f1f5f9']]}
+//                        onChange={(v) => setTweak('palette', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+
+  .twk-chips{display:flex;gap:6px}
+  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
+    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
+    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
+  .twk-chip:hover{transform:translateY(-1px);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
+  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
+    0 2px 6px rgba(0,0,0,.15)}
+  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
+    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i:first-child{box-shadow:none}
+  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    // Same-window signal so in-page listeners (deck-stage rail thumbnails)
+    // can react — the parent message only reaches the host, not peers.
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  // Auto-inject a rail toggle when a <deck-stage> is on the page. The
+  // toggle drives the deck's per-viewer _railVisible via window message;
+  // state is mirrored from the same localStorage key the deck reads so
+  // the control reflects reality across reloads. The mechanism is the
+  // message — authors who want custom placement can post it directly
+  // and pass noDeckControls to suppress this one.
+  const hasDeckStage = React.useMemo(
+    () => typeof document !== 'undefined' && !!document.querySelector('deck-stage'),
+    [],
+  );
+  // Hide the toggle until the host has actually enabled the rail (the
+  // __omelette_rail_enabled window message, posted only when the
+  // omelette_deck_rail_enabled flag is on for this user). The initial read
+  // covers TweaksPanel mounting after the message already arrived; the
+  // listener covers the common case of mounting first.
+  const [railEnabled, setRailEnabled] = React.useState(
+    () => hasDeckStage && !!document.querySelector('deck-stage')?._railEnabled,
+  );
+  React.useEffect(() => {
+    if (!hasDeckStage || railEnabled) return undefined;
+    const onMsg = (e) => {
+      if (e.data && e.data.type === '__omelette_rail_enabled') setRailEnabled(true);
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [hasDeckStage, railEnabled]);
+  const [railVisible, setRailVisible] = React.useState(() => {
+    try { return localStorage.getItem('deck-stage.railVisible') !== '0'; } catch (e) { return true; }
+  });
+  const toggleRail = (on) => {
+    setRailVisible(on);
+    window.postMessage({ type: '__deck_rail_visible', on }, '*');
+  };
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-noncommentable=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">
+          {children}
+          {hasDeckStage && railEnabled && !noDeckControls && (
+            <TweakSection label="Deck">
+              <TweakToggle label="Thumbnail rail" value={railVisible} onChange={toggleRail} />
+            </TweakSection>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  // Segments wrap mid-word once per-segment width runs out. The track is
+  // ~248px (280 panel − 28 body pad − 4 seg pad), each button loses 12px
+  // to its own padding, and 11.5px system-ui averages ~6.3px/char — so 2
+  // options fit ~16 chars each, 3 fit ~10. Past that (or >3 options), fall
+  // back to a dropdown rather than wrap.
+  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
+  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
+  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
+  if (!fitsAsSegments) {
+    // <select> emits strings — map back to the original option value so the
+    // fallback stays type-preserving (numbers, booleans) like the segment path.
+    const resolve = (s) => {
+      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
+      return m === undefined ? s : typeof m === 'object' ? m.value : m;
+    };
+    return <TweakSelect label={label} value={value} options={options}
+                        onChange={(s) => onChange(resolve(s))} />;
+  }
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+// Relative-luminance contrast pick — checkmarks drawn over a swatch need to
+// read on both #111 and #fafafa without per-option configuration. Hex input
+// only (#rgb / #rrggbb); named or rgb()/hsl() colors fall through to "light".
+function __twkIsLight(hex) {
+  const h = String(hex).replace('#', '');
+  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
+  const n = parseInt(x.slice(0, 6), 16);
+  if (Number.isNaN(n)) return true;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return r * 299 + g * 587 + b * 114 > 148000;
+}
+
+const __TwkCheck = ({ light }) => (
+  <svg viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+  </svg>
+);
+
+// TweakColor — curated color/palette picker. Each option is either a single
+// hex string or an array of 1-5 hex strings; the card adapts — a lone color
+// renders solid, a palette renders colors[0] as the hero (left ~2/3) with the
+// rest stacked in a sharp column on the right. onChange emits the
+// option in the shape it was passed (string stays string, array stays array).
+// Without options it falls back to the native color input for back-compat.
+function TweakColor({ label, value, options, onChange }) {
+  if (!options || !options.length) {
+    return (
+      <div className="twk-row twk-row-h">
+        <div className="twk-lbl"><span>{label}</span></div>
+        <input type="color" className="twk-swatch" value={value}
+               onChange={(e) => onChange(e.target.value)} />
+      </div>
+    );
+  }
+  // Native <input type=color> emits lowercase hex per the HTML spec, so
+  // compare case-insensitively. String() guards JSON.stringify(undefined),
+  // which returns the primitive undefined (no .toLowerCase).
+  const key = (o) => String(JSON.stringify(o)).toLowerCase();
+  const cur = key(value);
+  return (
+    <TweakRow label={label}>
+      <div className="twk-chips" role="radiogroup">
+        {options.map((o, i) => {
+          const colors = Array.isArray(o) ? o : [o];
+          const [hero, ...rest] = colors;
+          const sup = rest.slice(0, 4);
+          const on = key(o) === cur;
+          return (
+            <button key={i} type="button" className="twk-chip" role="radio"
+                    aria-checked={on} data-on={on ? '1' : '0'}
+                    aria-label={colors.join(', ')} title={colors.join(' · ')}
+                    style={{ background: hero }}
+                    onClick={() => onChange(o)}>
+              {sup.length > 0 && (
+                <span>
+                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
+                </span>
+              )}
+              {on && <__TwkCheck light={__twkIsLight(hero)} />}
+            </button>
+          );
+        })}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+// ui.jsx — Sistema de diseño: monocromo, minimalista, glow blanco
+
+const PALETTE = {
+  bg:            '#000000',
+  surface:       'rgba(255,255,255,0.025)',
+  surfaceStrong: 'rgba(255,255,255,0.05)',
+  border:        'rgba(255,255,255,0.07)',
+  borderStrong:  'rgba(255,255,255,0.14)',
+
+  text:   'rgba(255,255,255,0.94)',
+  text2:  'rgba(255,255,255,0.55)',
+  text3:  'rgba(255,255,255,0.34)',
+  text4:  'rgba(255,255,255,0.16)',
+
+  // "acento" = blanco con glow
+  accent:     'rgba(255,255,255,0.96)',
+  accentDim:  'rgba(255,255,255,0.20)',
+  accentSoft: 'rgba(255,255,255,0.06)',
+  on:         '#000000',
+
+  // estados muy desaturados
+  warn:     'oklch(0.72 0.05 28)',
+  warnSoft: 'rgba(255,255,255,0.05)',
+  amber:    'oklch(0.78 0.04 80)',
+  amberSoft:'rgba(255,255,255,0.05)',
+  cool:     'oklch(0.74 0.03 240)',
+  coolSoft: 'rgba(255,255,255,0.05)',
+};
+
+const cardCss = {
+  background: PALETTE.surface,
+  border: `0.5px solid ${PALETTE.border}`,
+  borderRadius: 22,
+  padding: 16,
+};
+
+const fmt = (n) => '$' + Math.abs(n).toLocaleString('es-AR');
+
+function Icon({ name, size = 20, color = 'currentColor', sw = 1.2, style }) {
+  const paths = {
+    home:    <><path d="M3 11l9-8 9 8"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></>,
+    mic:     <><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></>,
+    check:   <><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8 12.5l3 3 5-6"/></>,
+    check2:  <path d="M5 13l4 4L19 7"/>,
+    note:    <><path d="M5 4h11l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M16 4v4h4"/><path d="M8 13h8M8 17h6"/></>,
+    money:   <><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="12" r="3"/></>,
+    cal:     <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></>,
+    flame:   <path d="M12 3c1 4 5 5 5 10a5 5 0 1 1-10 0c0-3 2-3 2-6 2 1 3 3 3-4z"/>,
+    plus:    <><path d="M12 5v14M5 12h14"/></>,
+    chev:    <path d="M9 6l6 6-6 6"/>,
+    x:       <><path d="M6 6l12 12M18 6L6 18"/></>,
+    apple:   <><path d="M12 7C9 4 5 5 5 10c0 5 3 11 7 11s7-6 7-11c0-5-4-6-7-3z"/><path d="M12 7c0-2 1-4 3-4"/></>,
+    target:  <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></>,
+    sparkle: <path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>,
+    journal: <><path d="M5 4h13a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H7a2 2 0 0 1-2-2V4z"/><path d="M9 9h7M9 13h5"/></>,
+    book:    <><path d="M4 5a2 2 0 0 1 2-2h13v17H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></>,
+    music:   <><path d="M9 18V6l12-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></>,
+    dumbbell:<><path d="M3 9v6M21 9v6M6 6v12M18 6v12M6 12h12"/></>,
+    arrowUp: <><path d="M12 19V5M5 12l7-7 7 7"/></>,
+    arrowDown: <><path d="M12 5v14M5 12l7 7 7-7"/></>,
+    camera:  <><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></>,
+    calc:    <><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></>,
+    key:     <><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></>,
+    'alert-circle': <><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={style}>
+      {paths[name] || null}
+    </svg>
+  );
+}
+
+// Tipografía: ligera y minimalista
+function ScreenHeader({ kicker, title, sub, action }) {
+  return (
+    <div style={{ padding: '6px 24px 16px' }}>
+      {kicker && <div style={{
+        fontSize: 10, fontWeight: 400, letterSpacing: 2.4, textTransform: 'uppercase',
+        color: PALETTE.text3, marginBottom: 14,
+      }}>{kicker}</div>}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{
+          fontSize: 28, lineHeight: 1.1, color: PALETTE.text,
+          letterSpacing: -0.7, fontWeight: 300,
+        }}>{title}</div>
+        {action}
+      </div>
+      {sub && <div style={{
+        marginTop: 10, fontSize: 13, color: PALETTE.text2,
+        letterSpacing: -0.05, fontWeight: 300,
+      }}>{sub}</div>}
+    </div>
+  );
+}
+
+function SectionLabel({ children, action }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      fontSize: 10, fontWeight: 400, letterSpacing: 2.4, textTransform: 'uppercase',
+      color: PALETTE.text3, marginBottom: 12, paddingLeft: 6,
+    }}>
+      <span>{children}</span>
+      {action}
+    </div>
+  );
+}
+
+function IconButton({ icon, accent, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      width: 34, height: 34, borderRadius: 17,
+      background: 'transparent',
+      color: PALETTE.text2,
+      border: `0.5px solid ${PALETTE.borderStrong}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+    }}>
+      <Icon name={icon} size={16} sw={1.4}/>
+    </button>
+  );
+}
+
+function Pill({ children, bg, color }) {
+  return (
+    <span style={{
+      display: 'inline-block',
+      fontSize: 10, fontWeight: 400, letterSpacing: 0.4,
+      padding: '3px 9px', borderRadius: 8,
+      background: bg || PALETTE.surfaceStrong, color: color || PALETTE.text2,
+      border: `0.5px solid ${PALETTE.border}`,
+    }}>{children}</span>
+  );
+}
+
+Object.assign(window, { PALETTE, cardCss, fmt, Icon, ScreenHeader, SectionLabel, IconButton, Pill });
+
+// data.jsx — Datos reales de Agus (limpio para uso real)
+
+// Persistencia en localStorage
+function loadLS(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+}
+function saveLS(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+const DATA = {
+  user: { nombre: 'Agus', rol: 'DJ' },
+
+  // ─── Finanzas (datos reales) ───
+  patrimonio: {
+    arsBanco: 511917,
+    arsEfectivo: 1850000,
+    usdEfectivo: 4500,
+  },
+
+  gastosFijosARS: [
+    { c: 'Alquiler', m: 300000, vto: 5, cat: 'Vivienda', estado: 'pagado' },
+    { c: 'Expensas', m: 34500, vto: 10, cat: 'Vivienda', estado: 'pendiente' },
+    { c: 'Monotributo', m: 102538, vto: 20, cat: 'Impuestos', estado: 'pendiente' },
+    { c: 'Seguro Camioneta', m: 84711, vto: 9, cat: 'Transporte', estado: 'vence-pronto' },
+    { c: 'Gimnasio', m: 55000, vto: 1, cat: 'Salud', estado: 'pagado' },
+    { c: 'Contador', m: 55000, vto: 15, cat: 'Profesional', estado: 'pendiente' },
+    { c: 'Claro', m: 30748, vto: 12, cat: 'Comunicación', estado: 'pendiente' },
+    { c: 'Netflix', m: 19714, vto: 4, cat: 'Entretenimiento', estado: 'pagado' },
+    { c: 'Disney', m: 18399, vto: 7, cat: 'Entretenimiento', estado: 'pendiente' },
+    { c: 'Seguro Carro', m: 13154, vto: 18, cat: 'Transporte', estado: 'pendiente' },
+    { c: 'Adobe', m: 13492, vto: 22, cat: 'Trabajo', estado: 'pendiente' },
+    { c: 'Seguro Moto', m: 10510, vto: 25, cat: 'Transporte', estado: 'pendiente' },
+    { c: 'Google One', m: 5474, vto: 14, cat: 'Tecnología', estado: 'pendiente' },
+    { c: 'Spotify', m: 4360, vto: 28, cat: 'Música', estado: 'pendiente' },
+  ],
+
+  gastosFijosUSD: [
+    { c: 'Claude', m: 20.00, cat: 'IA' },
+    { c: 'Instagram', m: 11.99, cat: 'Trabajo' },
+    { c: 'Namecheap', m: 11.18, cat: 'Web' },
+    { c: 'iCloud', m: 10.00, cat: 'Tecnología' },
+    { c: 'YouTube Premium', m: 9.49, cat: 'Entretenimiento' },
+    { c: 'Netlify', m: 9.00, cat: 'Web' },
+  ],
+
+  // ─── Eventos DJ (datos reales extraídos de COBROS_EVENTOS.html) ───
+  eventosDJ: [
+    // ── REALIZADOS 2026 ──
+    { fecha: '7 Mar 2026',  dia: 'Sáb', evento: '15 años Sofi Pourtale',        lugar: 'El Rocío',           tipo: '15',   cur: 'USD', total: 900,     pagado: 900,     estado: 'cobrado' },
+    { fecha: '21 Mar 2026', dia: 'Sáb', evento: 'Presentación Trajes Cacharí',  lugar: 'Cacharí',            tipo: 'otro', cur: 'ARS', total: 400000,  pagado: 400000,  estado: 'cobrado' },
+    { fecha: '28 Mar 2026', dia: 'Sáb', evento: 'XV años Juana Antognoli',      lugar: 'Los Ombues',         tipo: '15',   cur: 'USD', total: 900,     pagado: 900,     estado: 'cobrado' },
+    { fecha: '2 May 2026',  dia: 'Sáb', evento: 'XV años Isabel Brondino',      lugar: 'El Rocío',           tipo: '15',   cur: 'ARS', total: 1300000, pagado: 1300000, estado: 'cobrado' },
+    // ── PRÓXIMOS 2026 ──
+    { fecha: '20 Jun 2026', dia: 'Sáb', evento: 'XV años Matilda Fonte',        lugar: 'Los Ombues',         tipo: '15',   cur: 'USD', total: 1400,    pagado: 1400,    estado: 'cobrado' },
+    { fecha: '4 Jul 2026',  dia: 'Sáb', evento: '40 años Jorgelina',            lugar: 'Salón Policiales',   tipo: 'otro', cur: 'ARS', total: 1867000, pagado: 1335000, cuotas: '5/7',  estado: 'parcial' },
+    { fecha: '11 Jul 2026', dia: 'Sáb', evento: '15 años Male Dobal',           lugar: 'Soc. Rural Rauch',   tipo: '15',   cur: 'USD', total: 1700,    pagado: 906,     estado: 'parcial' },
+    { fecha: '25 Jul 2026', dia: 'Sáb', evento: 'Fiesta Oriana Ortigoza',       lugar: 'Los Ombues',         tipo: 'otro', cur: 'ARS', total: 2009000, pagado: 1400000, cuotas: '7/10', estado: 'parcial' },
+    { fecha: '31 Jul 2026', dia: 'Vie', evento: '16 años Milena Conte',         lugar: 'La Tapera',          tipo: 'otro', cur: 'ARS', total: 850000,  pagado: 100000,  estado: 'parcial', contacto: 'Carla Grillo 2281466046' },
+    { fecha: '1 Ago 2026',  dia: 'Sáb', evento: '15 años Emilia Tus',           lugar: 'Cacharí',            tipo: '15',   cur: 'ARS', total: 1860000, pagado: 1860000, estado: 'cobrado' },
+    { fecha: '8 Ago 2026',  dia: 'Sáb', evento: '15 años Camila García',        lugar: 'Las Palmeras',       tipo: '15',   cur: 'USD', total: 1400,    pagado: 0,       estado: 'pendiente', contacto: 'Federico García 2281527072' },
+    { fecha: '15 Ago 2026', dia: 'Sáb', evento: 'Boda Bren y Lucas',            lugar: 'Daireaux',           tipo: 'boda', cur: 'USD', total: 480,     pagado: 100,     estado: 'parcial', contacto: 'Bren: 2216497244' },
+    { fecha: '11 Sep 2026', dia: 'Vie', evento: 'Boda Sunset — Diego y Diana',  lugar: '',                   tipo: 'boda', cur: 'ARS', total: 1000000, pagado: 0,       estado: 'pendiente' },
+    { fecha: '12 Sep 2026', dia: 'Sáb', evento: 'XV años Ana Gregorini',        lugar: '',                   tipo: '15',   cur: 'USD', total: 2000,    pagado: 600,     estado: 'parcial' },
+    { fecha: '19 Sep 2026', dia: 'Sáb', evento: 'Boda Belén y Ezequiel',        lugar: 'Loma Verde',         tipo: 'boda', cur: 'ARS', total: 1200000, pagado: 300000,  estado: 'parcial' },
+    { fecha: '3 Oct 2026',  dia: 'Sáb', evento: '50 años Santi Guevara',        lugar: '',                   tipo: 'otro', cur: 'USD', total: 1200,    pagado: 800,     estado: 'parcial', contacto: 'Brenda Miller' },
+    { fecha: '11 Oct 2026', dia: 'Sáb', evento: '15 años Cami Canalicchio',     lugar: '',                   tipo: '15',   cur: 'USD', total: 1100,    pagado: 1100,    estado: 'cobrado', contacto: 'Mamá: Ceci Imeroni' },
+    { fecha: '17 Oct 2026', dia: 'Sáb', evento: 'XV años Valentina Centurión',  lugar: '',                   tipo: '15',   cur: 'USD', total: 1300,    pagado: 1300,    estado: 'cobrado' },
+    { fecha: '31 Oct 2026', dia: 'Sáb', evento: '15 años Juana Borda',          lugar: 'Los Ombues',         tipo: '15',   cur: 'ARS', total: 1710625, pagado: 1710625, estado: 'cobrado' },
+    { fecha: '7 Nov 2026',  dia: 'Sáb', evento: '15 años Sofi Martins',         lugar: 'El Rocío',           tipo: '15',   cur: 'USD', total: 1300,    pagado: 1300,    estado: 'cobrado' },
+    { fecha: '21 Nov 2026', dia: 'Sáb', evento: 'Fiesta Mili Escudero',         lugar: 'Club Social Cacharí',tipo: 'otro', cur: 'ARS', total: 1425000, pagado: 200000,  cuotas: '1/7',  estado: 'parcial', contacto: '2281587047' },
+    { fecha: '19 Dic 2026', dia: 'Sáb', evento: 'Fiesta Camila Bongiorno',      lugar: '',                   tipo: 'otro', cur: 'USD', total: 1200,    pagado: 1200,    estado: 'cobrado', contacto: 'Mamá: Elisa' },
+    // ── 2027 ──
+    { fecha: '16 Ene 2027', dia: 'Sáb', evento: '15 años Emilia Misch',         lugar: 'Los Ombues',         tipo: '15',   cur: 'USD', total: 1260,    pagado: 1260,    estado: 'cobrado', contacto: 'Alicia: +54 9 11 3822-0298' },
+    { fecha: '13 Feb 2027', dia: 'Vie', evento: '15 años Mercedes Lombar',      lugar: 'Círculo Pol. Ruta 51',tipo: '15',  cur: 'USD', total: 800,     pagado: 141,     estado: 'parcial', contacto: 'Marce Echarri' },
+    { fecha: '12 Mar 2027', dia: 'Vie', evento: '15 años Martí Mathieu',        lugar: 'Los Ombues',         tipo: '15',   cur: 'USD', total: 1400,    pagado: 1400,    estado: 'cobrado' },
+    { fecha: '13 Mar 2027', dia: 'Sáb', evento: '15 años Lola Lamana',          lugar: '',                   tipo: '15',   cur: 'USD', total: 1260,    pagado: 1260,    estado: 'cobrado', contacto: 'Carolina Regatuzo: 2281545903' },
+    { fecha: '20 Mar 2027', dia: 'Vie', evento: 'Joda Clara Fernández',         lugar: '',                   tipo: 'otro', cur: 'ARS', total: 1300,    pagado: 0,       estado: 'pendiente', contacto: 'Mamá Valeria: 2281662456' },
+    { fecha: '12 Jun 2027', dia: 'Vie', evento: '15 años Irina Sosa',           lugar: 'Los Ombues',         tipo: '15',   cur: 'ARS', total: 1897500, pagado: 581135,  cuotas: '3/10', estado: 'parcial', contacto: 'Papá Marcos / Mamá Yami' },
+    { fecha: '9 Oct 2027',  dia: 'Vie', evento: '15 años Yazmín Gutiérrez',     lugar: 'El Rocío',           tipo: '15',   cur: 'ARS', total: 1801000, pagado: 1801000, estado: 'cobrado', contacto: 'Mamá Verónica: 2281539082' },
+    { fecha: '15 Oct 2027', dia: 'Sáb', evento: '15 años Martina Vásquez',      lugar: 'El Rocío',           tipo: '15',   cur: 'USD', total: 1500,    pagado: 0,       estado: 'pendiente', contacto: 'Mamá Luciana: 2281460131' },
+  ],
+
+  // ─── Nutrición (objetivos reales) ───
+  macrosObjetivo: { kcal: 2800, prot: 180, carb: 320, grasa: 80 },
+};
+
+window.DATA = DATA;
+
+// voice.jsx — Asistente de voz monocromo (eclipse + waveform blanco)
+
+// ── Categorización inteligente de voz ───────────────────────────────────────
+function categorizarTranscript(text) {
+  const t = text.toLowerCase();
+
+  // Ingreso DJ / cobro
+  if (/cobr[eé]|me pag[oó]|me deposit|ingres[oó]|me transfer/.test(t)) {
+    const monto = (t.match(/(\d[\d.,]+)\s*(mil|pesos|peso|k\b)?/) || [])[0];
+    return { tipo: 'Ingreso', icon: 'money', destino: 'Finanzas · Ingresos DJ',
+      extra: monto ? `+${monto} · hoy` : 'Registrado hoy',
+      coach: 'Bien. Una menos en pendientes.' };
+  }
+  // Gasto
+  if (/gast[eé]|compr[eé]|pagu[eé]|cost[oó]|salió|desembolsé/.test(t)) {
+    const monto = (t.match(/\$?\s*(\d[\d.,]+)\s*(mil|pesos|k\b)?/) || [])[0];
+    const cats = { super: 'Comida', combustible: 'Combustible', nafta: 'Combustible',
+      café: 'Cafés', farmacia: 'Salud', ropa: 'Ropa', comida: 'Comida' };
+    const cat = Object.entries(cats).find(([k]) => t.includes(k))?.[1] || 'Variable';
+    return { tipo: 'Gasto', icon: 'money', destino: `Gastos · ${cat}`,
+      extra: monto ? `${monto} · hoy` : 'Registrado hoy',
+      coach: 'Anotado. Vas dentro del mes.' };
+  }
+  // Pago futuro / recordatorio de pago
+  if (/pagar|vence|vencimiento|cuota|seguro|factura/.test(t)) {
+    return { tipo: 'Pago pendiente', icon: 'money', destino: 'Suscripciones · Próximos pagos',
+      extra: 'Recordatorio activado',
+      coach: 'Anotado. Te aviso un día antes.' };
+  }
+  // Agenda / horario
+  if (/ma[ñn]ana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|a las|reunión|llamada|evento|boda|XV|cumpleaños/.test(t)) {
+    const hora = (t.match(/a las (\d{1,2}(?::\d{2})?)/i) || [])[1];
+    return { tipo: 'Agenda', icon: 'cal', destino: `Agenda · ${hora ? hora + 'hs' : 'próximo evento'}`,
+      extra: hora ? `Bloque programado a las ${hora}` : 'Agregado a la agenda',
+      coach: 'Listo. En la agenda.' };
+  }
+  // Gym / hábito físico
+  if (/gym|gimnasio|entrén[eé]|entreno|cardio|piernas|pecho|espalda|brazos|abdominales|corr[ií]/.test(t)) {
+    return { tipo: 'Hábito · Gym', icon: 'dumbbell', destino: 'Hábitos · Gym',
+      extra: 'Suma a tu racha · hoy',
+      coach: 'Modo bestia activado. Racha suma.' };
+  }
+  // Nutrición / comida
+  if (/com[ií]|desayu[né]|almorzc[eé]|cen[eé]|kcal|proteína|calorías|macro/.test(t)) {
+    return { tipo: 'Nutrición', icon: 'apple', destino: 'Nutrición · Comidas del día',
+      extra: 'Sumado al registro · calculá macros con foto',
+      coach: 'Sumado al día. Vas firme.' };
+  }
+  // Nota / idea
+  if (/idea|anotar|anoto|nota|reel|contenido|publicar|post|story|video|set|tracklist|mix/.test(t)) {
+    const tags = [];
+    if (/reel|contenido|story|post|video/.test(t)) tags.push('Contenido');
+    if (/set|tracklist|mix|dj|música/.test(t)) tags.push('DJ');
+    return { tipo: 'Idea · Nota', icon: 'note', destino: `Notas · ${tags[0] || 'General'}`,
+      extra: `Tag: ${tags.join(', ') || 'Sin etiqueta'}`,
+      coach: 'Buena. La sumo a tu pila.' };
+  }
+  // Tarea genérica
+  if (/tengo que|hay que|recordar|pendiente|hacer|llamar|enviar|mandar|confirmar/.test(t)) {
+    return { tipo: 'Tarea', icon: 'check', destino: 'Tareas · Pendientes',
+      extra: 'Prioridad media · hoy',
+      coach: 'Listo. Una menos en la cabeza.' };
+  }
+  // Meta / objetivo
+  if (/meta|objetivo|quiero|lograr|llegar|bajar|subir|ahorrar/.test(t)) {
+    return { tipo: 'Meta', icon: 'target', destino: 'Metas · Activas',
+      extra: 'Registrada',
+      coach: 'Meta anotada. Foco.' };
+  }
+  // Diario / reflexión
+  if (/hoy fue|me siento|estoy|me alegra|me preocupa|reflexión|diario/.test(t)) {
+    return { tipo: 'Diario', icon: 'journal', destino: 'Diario · Entrada de hoy',
+      extra: 'Guardado en tu diario',
+      coach: 'Escrito. El día queda.' };
+  }
+  // Fallback
+  return { tipo: 'Captura', icon: 'sparkle', destino: 'Notas · General',
+    extra: 'Categorizalo vos después',
+    coach: 'Guardado. Nada se pierde.' };
+}
+
+function VoiceModal({ onClose, onSaved }) {
+  const [stage, setStage] = React.useState('ready'); // ready | recording | analyzing | done | error
+  const [transcript, setTranscript] = React.useState('');
+  const [interim, setInterim] = React.useState('');
+  const [elapsed, setElapsed] = React.useState(0);
+  const [result, setResult] = React.useState(null);
+  const [noSpeech, setNoSpeech] = React.useState(false);
+  const recogRef = React.useRef(null);
+  const clockRef = React.useRef(null);
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const supported = !!SpeechRecognition;
+
+  const startRecording = () => {
+    if (!supported) { setStage('error'); return; }
+    setNoSpeech(false);
+    setTranscript(''); setInterim(''); setElapsed(0);
+    setStage('recording');
+
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const recog = new SpeechRecognition();
+    recog.lang = 'es-AR';
+    recog.continuous = !isIOS;
+    recog.interimResults = !isIOS;
+    recogRef.current = recog;
+    const stageRef = { current: 'recording' };
+
+    clockRef.current = setInterval(() => setElapsed(e => e + 0.1), 100);
+
+    recog.onresult = (e) => {
+      let fin = '', tmp = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';
+        else tmp += e.results[i][0].transcript;
+      }
+      if (fin) setTranscript(t => t + fin);
+      if (!isIOS) setInterim(tmp);
+    };
+    recog.onerror = (e) => {
+      if (e.error === 'no-speech') { setNoSpeech(true); return; }
+      if (e.error === 'aborted') return;
+      clearInterval(clockRef.current);
+      setStage('error');
+    };
+    // En iOS, recognition termina sola — reiniciar si el usuario no apretó stop
+    recog.onend = () => {
+      if (stageRef.current === 'recording' && isIOS) {
+        try { recog.start(); } catch(e) {}
+      }
+    };
+    recogRef.current._stageRef = stageRef;
+    recog.start();
+  };
+
+  const stopRecording = () => {
+    clearInterval(clockRef.current);
+    if (recogRef.current) {
+      if (recogRef.current._stageRef) recogRef.current._stageRef.current = 'stopped';
+      try { recogRef.current.stop(); } catch(e) {}
+      recogRef.current = null;
+    }
+    const full = transcript + interim;
+    if (!full.trim()) { setStage('ready'); return; }
+    setTranscript(full.trim());
+    setInterim('');
+    setStage('analyzing');
+    setTimeout(() => {
+      const r = categorizarTranscript(full.trim());
+      setResult(r);
+      setStage('done');
+    }, 900);
+  };
+
+  React.useEffect(() => {
+    if (stage !== 'done' || !result) return;
+    const id = setTimeout(() => onSaved && onSaved({ ...result, text: transcript }), 2200);
+    return () => clearTimeout(id);
+  }, [stage, result]);
+
+  React.useEffect(() => () => {
+    clearInterval(clockRef.current);
+    if (recogRef.current) { try { recogRef.current.stop(); } catch(e){} }
+  }, []);
+
+  const tap = () => {
+    if (stage === 'ready') startRecording();
+    else if (stage === 'recording') stopRecording();
+  };
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, background: '#000', zIndex: 60,
+      display: 'flex', flexDirection: 'column',
+      animation: 'voiceFadeIn 0.3s ease-out',
+    }}>
+      <style>{`
+        @keyframes voiceFadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes ringPulse {
+          0%,100% { box-shadow: 0 0 60px 8px rgba(255,255,255,0.20), 0 0 120px 30px rgba(255,255,255,0.06); transform: scale(1); }
+          50%     { box-shadow: 0 0 90px 16px rgba(255,255,255,0.45), 0 0 160px 50px rgba(255,255,255,0.16); transform: scale(1.025); }
+        }
+        @keyframes ringSpin {
+          0% { transform: rotate(0deg); opacity: 0.4 } 100% { transform: rotate(360deg); opacity: 0.6 }
+        }
+        @keyframes wave { 0%,100% { height: 8px } 50% { height: 36px } }
+        @keyframes coachIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes recDot { 0%,100% { opacity: 1 } 50% { opacity: 0.2 } }
+      `}</style>
+
+      {/* close + status */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '60px 24px 0',
+      }}>
+        <div style={{
+          fontSize: 9.5, fontWeight: 400, letterSpacing: 2.4, textTransform: 'uppercase',
+          color: PALETTE.text3,
+        }}>
+          {stage === 'ready' && 'Listo'}
+          {stage === 'recording' && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, color: PALETTE.text }}>
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: '#fff', animation: 'recDot 1s ease-in-out infinite' }}/>
+              Grabando · {elapsed.toFixed(1)}s
+            </span>
+          )}
+          {stage === 'analyzing' && 'Analizando'}
+          {stage === 'done' && 'Guardado'}
+          {stage === 'error' && 'Sin micrófono'}
+        </div>
+        <button onClick={onClose} style={{
+          width: 32, height: 32, borderRadius: 16, background: 'transparent',
+          border: `0.5px solid ${PALETTE.borderStrong}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: PALETTE.text, cursor: 'pointer',
+        }}>
+          <Icon name="x" size={14} sw={1.4}/>
+        </button>
+      </div>
+
+      {/* body */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: '0 28px', textAlign: 'center', gap: 36,
+        paddingBottom: 80,
+      }}>
+        {/* ECLIPSE RING */}
+        <div style={{ position: 'relative', width: 240, height: 240,
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {stage === 'analyzing' && (
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              border: '0.5px solid rgba(255,255,255,0.4)',
+              borderTopColor: 'rgba(255,255,255,0.95)',
+              animation: 'ringSpin 1.4s linear infinite',
+            }}/>
+          )}
+          <button onClick={tap} disabled={stage === 'analyzing' || stage === 'done'} style={{
+            width: 220, height: 220, borderRadius: '50%',
+            background: 'transparent',
+            border: `1.2px solid ${stage === 'done' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.85)'}`,
+            cursor: (stage === 'ready' || stage === 'recording') ? 'pointer' : 'default',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: PALETTE.text,
+            animation: stage === 'recording' ? 'ringPulse 2.2s ease-in-out infinite'
+                      : stage === 'ready' ? 'ringPulse 4s ease-in-out infinite' : 'none',
+            transition: 'border 0.3s',
+          }}>
+            {stage === 'ready' && (
+              <span style={{ fontSize: 30, opacity: 0.7 }}>✦</span>
+            )}
+            {stage === 'recording' && (
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center', height: 50 }}>
+                {[0,1,2,3,4,5,6].map(i => (
+                  <div key={i} style={{
+                    width: 2, borderRadius: 2, background: '#fff',
+                    animation: `wave ${0.7 + (i % 3) * 0.15}s ease-in-out ${i * 0.06}s infinite`,
+                  }}/>
+                ))}
+              </div>
+            )}
+            {stage === 'analyzing' && (
+              <div style={{
+                fontSize: 11, fontWeight: 300, letterSpacing: 2.4, textTransform: 'uppercase',
+                color: PALETTE.text2,
+              }}>procesando</div>
+            )}
+            {stage === 'done' && <Icon name="check2" size={48} sw={1} color={PALETTE.text}/>}
+          </button>
+        </div>
+
+        {stage === 'ready' && (
+          <div>
+            <div style={{
+              fontSize: 18, fontWeight: 300, letterSpacing: -0.2, color: PALETTE.text,
+              marginBottom: 8,
+            }}>Tocá para hablar</div>
+            <div style={{ fontSize: 12, color: PALETTE.text3, fontWeight: 300, maxWidth: 260,
+              lineHeight: 1.5, letterSpacing: 0.1 }}>
+              una idea · un pago · una tarea · un gasto
+            </div>
+            {noSpeech && <div style={{ marginTop: 12, fontSize: 11, color: PALETTE.warn,
+              fontWeight: 300 }}>No escuché nada — intentá de nuevo</div>}
+          </div>
+        )}
+
+        {stage === 'recording' && (
+          <div style={{ minHeight: 90, maxWidth: 320 }}>
+            <div style={{
+              fontSize: 19, fontWeight: 300, letterSpacing: -0.3, color: PALETTE.text,
+              lineHeight: 1.4, minHeight: 54,
+            }}>
+              {transcript}{interim}
+              {!transcript && !interim && (
+                <span style={{ color: PALETTE.text3, fontSize: 14 }}>Hablá ahora...</span>
+              )}
+              <span style={{ opacity: 0.35, marginLeft: 2 }}>|</span>
+            </div>
+            <div style={{ marginTop: 18, fontSize: 10, color: PALETTE.text3,
+              fontWeight: 400, letterSpacing: 2, textTransform: 'uppercase' }}>
+              Tocá para terminar
+            </div>
+          </div>
+        )}
+
+        {stage === 'analyzing' && (
+          <div style={{ maxWidth: 300 }}>
+            <div style={{
+              fontSize: 16, color: PALETTE.text2, fontWeight: 300,
+              fontStyle: 'italic', lineHeight: 1.4,
+            }}>"{transcript}"</div>
+          </div>
+        )}
+
+        {stage === 'error' && (
+          <div style={{ maxWidth: 280, textAlign: 'center' }}>
+            <div style={{ fontSize: 15, color: PALETTE.warn, fontWeight: 300, lineHeight: 1.5 }}>
+              No se pudo acceder al micrófono.
+            </div>
+            <div style={{ fontSize: 12, color: PALETTE.text3, marginTop: 8, fontWeight: 300 }}>
+              Habilitá el micrófono en los permisos del navegador e intentá de nuevo.
+            </div>
+          </div>
+        )}
+
+        {stage === 'done' && result && (
+          <div style={{ animation: 'coachIn 0.4s ease-out', maxWidth: 340, width: '100%' }}>
+            <div style={{
+              fontSize: 9.5, fontWeight: 400, letterSpacing: 2.4, textTransform: 'uppercase',
+              color: PALETTE.text3, marginBottom: 12,
+            }}>{result.tipo}</div>
+            <div style={{
+              fontSize: 17, color: PALETTE.text, lineHeight: 1.4, fontWeight: 300,
+              letterSpacing: -0.2, marginBottom: 18,
+            }}>"{transcript}"</div>
+
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              padding: '14px 16px', borderRadius: 16,
+              background: 'rgba(255,255,255,0.04)',
+              border: `0.5px solid ${PALETTE.border}`,
+              textAlign: 'left',
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: 'transparent',
+                border: `0.5px solid ${PALETTE.borderStrong}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: PALETTE.text,
+              }}>
+                <Icon name={result.icon} size={16} sw={1.2}/>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, color: PALETTE.text, fontWeight: 400,
+                  letterSpacing: -0.05 }}>
+                  → {result.destino}
+                </div>
+                <div style={{ fontSize: 11, color: PALETTE.text3, marginTop: 3, fontWeight: 300 }}>
+                  {result.extra}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              marginTop: 16, fontSize: 12.5, color: PALETTE.text2,
+              fontStyle: 'italic', fontWeight: 300, lineHeight: 1.4,
+            }}>{result.coach}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+window.VoiceModal = VoiceModal;
+
+// welcome.jsx — Eclipse ring monocromo, único elemento visible
+
+function WelcomeScreen({ onVoice, onSkip }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, background: '#000', zIndex: 80,
+      display: 'flex', flexDirection: 'column',
+      animation: 'wFade 0.5s ease-out',
+    }} data-screen-label="01 Bienvenida">
+      <style>{`
+        @keyframes wFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes wRise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes ringBreath {
+          0%,100% { box-shadow: 0 0 60px 8px rgba(255,255,255,0.18), 0 0 120px 30px rgba(255,255,255,0.06), inset 0 0 30px rgba(255,255,255,0.05); transform: scale(1); }
+          50%     { box-shadow: 0 0 80px 14px rgba(255,255,255,0.30), 0 0 160px 40px rgba(255,255,255,0.10), inset 0 0 40px rgba(255,255,255,0.08); transform: scale(1.012); }
+        }
+      `}</style>
+
+      {/* ECLIPSE — botón principal, centrado */}
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative',
+      }}>
+        <button onClick={onVoice} aria-label="Hablar" style={{
+          width: 240, height: 240, borderRadius: '50%',
+          background: 'transparent',
+          border: '1.2px solid rgba(255,255,255,0.95)',
+          cursor: 'pointer', padding: 0,
+          animation: 'ringBreath 4s ease-in-out infinite',
+          position: 'relative',
+        }}/>
+      </div>
+
+      {/* texto inferior — minimalismo extremo */}
+      <div style={{
+        padding: '0 32px 70px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
+        animation: 'wRise 0.6s ease-out 0.3s both',
+      }}>
+        <div style={{
+          fontSize: 13, fontWeight: 300, letterSpacing: 0.2,
+          color: PALETTE.text2, textAlign: 'center',
+        }}>Tocá para hablar</div>
+
+        <button onClick={onSkip} style={{
+          background: 'transparent', border: 'none',
+          color: PALETTE.text3, fontSize: 11.5, fontWeight: 300,
+          letterSpacing: 1.6, textTransform: 'uppercase', cursor: 'pointer',
+          padding: '10px 20px',
+        }}>Omitir</button>
+      </div>
+    </div>
+  );
+}
+
+window.WelcomeScreen = WelcomeScreen;
+
+// dynamic_island.jsx — Isla dinámica siempre presente, asistente de voz
+
+function DynamicIsland({ onVoice, listening, isMobile }) {
+  return (
+    <div style={{
+      position: isMobile ? 'fixed' : 'absolute',
+      top: isMobile ? 'calc(env(safe-area-inset-top, 0px) + 11px)' : 11,
+      left: '50%', transform: 'translateX(-50%)',
+      zIndex: 75, pointerEvents: 'none',
+    }}>
+      <style>{`
+        @keyframes diBreath {
+          0%,100% { box-shadow: 0 0 14px 1px rgba(255,255,255,0.22), 0 0 30px 6px rgba(255,255,255,0.08), inset 0 0 8px rgba(255,255,255,0.05); }
+          50%     { box-shadow: 0 0 20px 2px rgba(255,255,255,0.38), 0 0 42px 10px rgba(255,255,255,0.14), inset 0 0 12px rgba(255,255,255,0.08); }
+        }
+        @keyframes diLive {
+          0%,100% { box-shadow: 0 0 18px 2px rgba(255,255,255,0.40), 0 0 40px 10px rgba(255,255,255,0.18); }
+          50%     { box-shadow: 0 0 28px 4px rgba(255,255,255,0.65), 0 0 60px 14px rgba(255,255,255,0.30); }
+        }
+      `}</style>
+      <button onClick={onVoice} style={{
+        pointerEvents: 'auto',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        height: 36, minWidth: 124, padding: '0 18px',
+        borderRadius: 18,
+        background: '#000',
+        border: `0.8px solid ${listening ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.55)'}`,
+        cursor: 'pointer',
+        animation: `${listening ? 'diLive 1.1s' : 'diBreath 3.6s'} ease-in-out infinite`,
+        color: 'rgba(255,255,255,0.95)',
+        fontSize: 11, fontWeight: 300, letterSpacing: 0.6,
+      }}>
+        <span style={{ fontSize: 13, lineHeight: 1, filter: 'grayscale(0.2)' }}>✦</span>
+        <span style={{ opacity: 0.75 }}>{listening ? 'escuchando' : 'asistente'}</span>
+      </button>
+    </div>
+  );
+}
+
+window.DynamicIsland = DynamicIsland;
+
+// screens.jsx — Hoy, Tareas, Notas, Agenda, Hábitos, Diario
+
+// ─────────────────────────────────────────────────────────
+// HOY — entrada principal, voz como protagonista
+// ─────────────────────────────────────────────────────────
+function HoyScreen({ onVoice, goTab }) {
+  const now = new Date();
+  const h = now.getHours();
+  const saludo = h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const fecha = now.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const tareas = loadLS('nucleo_tareas', []);
+  const habitos = loadLS('nucleo_habitos', []);
+  const captures = loadLS('nucleo_captures', []);
+
+  const tareasPend = tareas.filter(t => !t.done).length;
+  const habitosHoy = habitos.filter(h => h.hechoHoy).length;
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader
+        kicker={fecha}
+        title={<><span style={{ color: PALETTE.text2 }}>{saludo},</span><br/>{DATA.user.nombre}.</>}
+      />
+
+      {/* Stats grid */}
+      <div style={{ padding: '0 16px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <StatCard label="Tareas pend." value={tareasPend} unit="" icon="check"/>
+        <StatCard label="Hábitos hoy" value={`${habitosHoy}/${habitos.length}`} progress={habitos.length ? habitosHoy/habitos.length : 0} icon="flame"/>
+      </div>
+
+      {/* Atajos a módulos */}
+      <div style={{ padding: '8px 16px' }}>
+        <SectionLabel>Módulos</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+          {[
+            { id: 'agenda', n: 'Agenda', icon: 'cal' },
+            { id: 'tareas', n: 'Tareas', icon: 'check' },
+            { id: 'finanzas', n: 'Finanzas', icon: 'money' },
+            { id: 'nutricion', n: 'Nutrición', icon: 'apple' },
+            { id: 'habitos', n: 'Hábitos', icon: 'flame' },
+            { id: 'notas', n: 'Notas', icon: 'note' },
+            { id: 'metas', n: 'Metas', icon: 'target' },
+            { id: 'diario', n: 'Diario', icon: 'journal' },
+          ].map(m => (
+            <button key={m.id} onClick={() => goTab(m.id)} style={{
+              ...cardCss, padding: 12, cursor: 'pointer', textAlign: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+              color: PALETTE.text, aspectRatio: '1', justifyContent: 'center',
+            }}>
+              <Icon name={m.icon} size={22} sw={1.4} color={PALETTE.text}/>
+              <div style={{ fontSize: 11, color: PALETTE.text2, fontWeight: 500 }}>{m.n}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, unit, progress, icon, tone }) {
+  const accentColor = tone === 'up' ? PALETTE.accent : tone === 'down' ? PALETTE.warn : PALETTE.text;
+  return (
+    <div style={{ ...cardCss, padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{
+          fontSize: 10.5, fontWeight: 600, letterSpacing: 1.4, textTransform: 'uppercase',
+          color: PALETTE.text3,
+        }}>{label}</div>
+        <Icon name={icon} size={14} color={PALETTE.text3} sw={1.6}/>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <div style={{
+          fontSize: 28, fontWeight: 600, letterSpacing: -0.8, color: accentColor,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{value}</div>
+        {unit && <div style={{ fontSize: 12, color: PALETTE.text3 }}>{unit}</div>}
+      </div>
+      {progress != null && (
+        <div style={{ marginTop: 12, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }}>
+          <div style={{ height: '100%', width: `${progress * 100}%`, background: PALETTE.accent, borderRadius: 2 }}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// TAREAS
+// ─────────────────────────────────────────────────────────
+function TareasScreen() {
+  const [tareas, setTareas] = React.useState(() => loadLS('nucleo_tareas', []));
+  const [nueva, setNueva] = React.useState('');
+  const [addOpen, setAddOpen] = React.useState(false);
+
+  const toggle = (id) => {
+    const updated = tareas.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    setTareas(updated); saveLS('nucleo_tareas', updated);
+  };
+  const addTarea = () => {
+    if (!nueva.trim()) return;
+    const updated = [...tareas, { id: Date.now(), t: nueva.trim(), done: false, cuando: 'Hoy' }];
+    setTareas(updated); saveLS('nucleo_tareas', updated); setNueva(''); setAddOpen(false);
+  };
+  const borrar = (id) => {
+    const updated = tareas.filter(t => t.id !== id);
+    setTareas(updated); saveLS('nucleo_tareas', updated);
+  };
+
+  const pend = tareas.filter(t => !t.done).length;
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader
+        title="Tareas"
+        sub={pend > 0 ? `${pend} pendientes · ${tareas.length - pend} hechas` : 'Todo al día'}
+        action={<IconButton icon="plus" accent onClick={() => setAddOpen(true)}/>}
+      />
+
+      {addOpen && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ ...cardCss, padding: 16, display: 'flex', gap: 10 }}>
+            <input
+              autoFocus
+              value={nueva}
+              onChange={e => setNueva(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addTarea()}
+              placeholder="Nueva tarea..."
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                color: PALETTE.text, fontSize: 15, fontFamily: 'inherit',
+              }}
+            />
+            <button onClick={addTarea} style={{
+              background: PALETTE.accent, color: PALETTE.on, border: 'none',
+              borderRadius: 10, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>Agregar</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '0 16px' }}>
+        {tareas.length === 0 ? (
+          <div style={{ ...cardCss, padding: 32, textAlign: 'center' }}>
+            <Icon name="check" size={32} color={PALETTE.text4} sw={1.2}/>
+            <div style={{ fontSize: 14, color: PALETTE.text3, marginTop: 12 }}>
+              Sin tareas. Tocá + para agregar.
+            </div>
+          </div>
+        ) : (
+          <div style={{ ...cardCss, padding: 0, overflow: 'hidden' }}>
+            {tareas.map((t, i) => (
+              <div key={t.id} style={{
+                display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 12,
+                borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+              }}>
+                <button onClick={() => toggle(t.id)} style={{
+                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                  border: t.done ? 'none' : `1.5px solid ${PALETTE.text4}`,
+                  background: t.done ? PALETTE.accent : 'transparent',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {t.done && <Icon name="check2" size={14} sw={3} color={PALETTE.on}/>}
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 14.5, color: t.done ? PALETTE.text3 : PALETTE.text,
+                    textDecoration: t.done ? 'line-through' : 'none', fontWeight: 500,
+                  }}>{t.t}</div>
+                </div>
+                <button onClick={() => borrar(t.id)} style={{
+                  background: 'none', border: 'none', color: PALETTE.text4, cursor: 'pointer', padding: 4,
+                }}>
+                  <Icon name="x" size={14} sw={2}/>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// AGENDA
+// ─────────────────────────────────────────────────────────
+function AgendaScreen() {
+  const [bloques, setBloques] = React.useState(() => loadLS('nucleo_bloques', []));
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [form, setForm] = React.useState({ hora: '', titulo: '' });
+
+  const now = new Date();
+  const dias = ['D','L','M','X','J','V','S'];
+  const dow = now.getDay();
+  const fecha = now.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const addBloque = () => {
+    if (!form.titulo.trim()) return;
+    const updated = [...bloques, { id: Date.now(), hora: form.hora || '00:00', titulo: form.titulo.trim(), done: false }].sort((a,b) => a.hora.localeCompare(b.hora));
+    setBloques(updated); saveLS('nucleo_bloques', updated); setForm({ hora: '', titulo: '' }); setAddOpen(false);
+  };
+  const toggle = (id) => {
+    const updated = bloques.map(b => b.id === id ? { ...b, done: !b.done } : b);
+    setBloques(updated); saveLS('nucleo_bloques', updated);
+  };
+  const borrar = (id) => {
+    const updated = bloques.filter(b => b.id !== id);
+    setBloques(updated); saveLS('nucleo_bloques', updated);
+  };
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader kicker={fecha} title="Agenda"
+        sub={bloques.length > 0 ? `${bloques.length} bloques hoy` : 'Sin bloques'}
+        action={<IconButton icon="plus" accent onClick={() => setAddOpen(true)}/>}
+      />
+
+      {/* Mini week strip */}
+      <div style={{ padding: '0 16px 16px', display: 'flex', gap: 6 }}>
+        {['L','M','X','J','V','S','D'].map((d, i) => {
+          const dayIdx = [1,2,3,4,5,6,0][i];
+          const isToday = dayIdx === dow;
+          return (
+            <div key={i} style={{
+              flex: 1, padding: '10px 0', borderRadius: 14, textAlign: 'center',
+              background: isToday ? PALETTE.accent : PALETTE.surface,
+              color: isToday ? PALETTE.on : PALETTE.text2,
+              border: isToday ? 'none' : `0.5px solid ${PALETTE.border}`,
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{d}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {addOpen && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ ...cardCss, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input type="time" value={form.hora} onChange={e => setForm(f => ({...f, hora: e.target.value}))}
+              style={{ background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`, borderRadius: 10,
+                padding: '8px 12px', color: PALETTE.text, fontSize: 14, fontFamily: 'inherit', outline: 'none' }}/>
+            <input placeholder="Título del bloque..." value={form.titulo} onChange={e => setForm(f => ({...f, titulo: e.target.value}))}
+              onKeyDown={e => e.key === 'Enter' && addBloque()}
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: PALETTE.text, fontSize: 15, fontFamily: 'inherit' }}/>
+            <button onClick={addBloque} style={{
+              background: PALETTE.accent, color: PALETTE.on, border: 'none',
+              borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>Agregar bloque</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '0 16px 18px' }}>
+        <SectionLabel>Hoy</SectionLabel>
+        {bloques.length === 0 ? (
+          <div style={{ ...cardCss, padding: 32, textAlign: 'center' }}>
+            <Icon name="cal" size={32} color={PALETTE.text4} sw={1.2}/>
+            <div style={{ fontSize: 14, color: PALETTE.text3, marginTop: 12 }}>Sin bloques. Tocá + para agregar.</div>
+          </div>
+        ) : (
+          <div style={{ ...cardCss, padding: 0, overflow: 'hidden' }}>
+            {bloques.map((b, i) => (
+              <div key={b.id} style={{
+                display: 'flex', padding: '12px 16px', gap: 14, alignItems: 'center',
+                borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+                opacity: b.done ? 0.5 : 1,
+              }}>
+                <div style={{ width: 48, fontSize: 13, color: PALETTE.text2, fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{b.hora}</div>
+                <div style={{ width: 3, borderRadius: 2, background: PALETTE.accent, flexShrink: 0, minHeight: 28 }}/>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 500,
+                    textDecoration: b.done ? 'line-through' : 'none' }}>{b.titulo}</div>
+                </div>
+                <button onClick={() => toggle(b.id)} style={{
+                  background: b.done ? PALETTE.accent : 'transparent', border: b.done ? 'none' : `1.5px solid ${PALETTE.text4}`,
+                  borderRadius: 6, width: 22, height: 22, cursor: 'pointer', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {b.done && <Icon name="check2" size={13} sw={3} color={PALETTE.on}/>}
+                </button>
+                <button onClick={() => borrar(b.id)} style={{ background: 'none', border: 'none', color: PALETTE.text4, cursor: 'pointer', padding: 4 }}>
+                  <Icon name="x" size={14} sw={2}/>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Eventos DJ reales — solo próximos (fecha >= hoy) */}
+      <div style={{ padding: '0 16px' }}>
+        <SectionLabel>Próximos eventos DJ</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {DATA.eventosDJ
+            .filter(e => e.estado !== 'cobrado' || new Date(e.fecha) > new Date())
+            .slice(0, 8)
+            .map((e, i) => {
+              const partes = e.fecha.split(' ');
+              const fmtMonto = e.cur === 'USD'
+                ? `U$D ${e.total.toLocaleString('es-AR')}`
+                : fmt(e.total);
+              return (
+                <div key={i} style={{ ...cardCss, padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{
+                    width: 48, height: 56, borderRadius: 12,
+                    background: PALETTE.surfaceStrong, border: `0.5px solid ${PALETTE.border}`,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <div style={{ fontSize: 9, color: PALETTE.text3, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{e.dia}</div>
+                    <div style={{ fontSize: 13, color: PALETTE.text, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{partes[0]}</div>
+                    <div style={{ fontSize: 9, color: PALETTE.text3, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{partes[1]}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 600 }}>{e.evento}</div>
+                    {e.lugar ? <div style={{ fontSize: 11.5, color: PALETTE.text3, marginTop: 2 }}>{e.lugar}</div> : null}
+                    <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <Pill bg={PALETTE.accentSoft} color={PALETTE.accent}>{fmtMonto}</Pill>
+                      {e.estado === 'cobrado'  && <Pill bg={PALETTE.accentSoft} color={PALETTE.accent}>✓ Cobrado</Pill>}
+                      {e.estado === 'parcial'  && <Pill bg={PALETTE.amberSoft} color={PALETTE.amber}>Parcial</Pill>}
+                      {e.estado === 'pendiente'&& <Pill bg={PALETTE.warnSoft} color={PALETTE.warn}>Pendiente</Pill>}
+                      {e.cuotas && <Pill bg={PALETTE.surfaceStrong} color={PALETTE.text2}>{e.cuotas}</Pill>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// HÁBITOS
+// ─────────────────────────────────────────────────────────
+function HabitosScreen() {
+  const [habitos, setHabitos] = React.useState(() => loadLS('nucleo_habitos', []));
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [nombre, setNombre] = React.useState('');
+
+  const toggle = (i) => {
+    const updated = habitos.map((h, j) => i === j ? { ...h, hechoHoy: !h.hechoHoy, streak: !h.hechoHoy ? h.streak + 1 : Math.max(0, h.streak - 1) } : h);
+    setHabitos(updated); saveLS('nucleo_habitos', updated);
+  };
+  const addHabito = () => {
+    if (!nombre.trim()) return;
+    const updated = [...habitos, { n: nombre.trim(), icon: 'flame', streak: 0, hechoHoy: false }];
+    setHabitos(updated); saveLS('nucleo_habitos', updated); setNombre(''); setAddOpen(false);
+  };
+  const borrar = (i) => {
+    const updated = habitos.filter((_, j) => j !== i);
+    setHabitos(updated); saveLS('nucleo_habitos', updated);
+  };
+
+  const hechos = habitos.filter(h => h.hechoHoy).length;
+  const maxStreak = habitos.length ? Math.max(...habitos.map(h => h.streak)) : 0;
+  const mejorHabito = habitos.find(h => h.streak === maxStreak);
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader
+        title="Hábitos"
+        sub={habitos.length > 0 ? `${hechos}/${habitos.length} hoy` : 'Sin hábitos'}
+        action={<IconButton icon="plus" accent onClick={() => setAddOpen(true)}/>}
+      />
+
+      {maxStreak > 0 && (
+        <div style={{ padding: '0 22px 22px' }}>
+          <div style={{ ...cardCss, padding: 22 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase', color: PALETTE.text3, marginBottom: 6 }}>Racha más larga</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <div style={{ fontSize: 56, fontWeight: 600, letterSpacing: -2, color: PALETTE.accent, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{maxStreak}</div>
+              <div style={{ fontSize: 14, color: PALETTE.text2 }}>días · {mejorHabito?.n}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addOpen && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ ...cardCss, padding: 16, display: 'flex', gap: 10 }}>
+            <input autoFocus value={nombre} onChange={e => setNombre(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addHabito()}
+              placeholder="Nombre del hábito..."
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: PALETTE.text, fontSize: 15, fontFamily: 'inherit' }}/>
+            <button onClick={addHabito} style={{ background: PALETTE.accent, color: PALETTE.on, border: 'none', borderRadius: 10, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Agregar</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '0 16px' }}>
+        <SectionLabel>Hoy</SectionLabel>
+        {habitos.length === 0 ? (
+          <div style={{ ...cardCss, padding: 32, textAlign: 'center' }}>
+            <Icon name="flame" size={32} color={PALETTE.text4} sw={1.2}/>
+            <div style={{ fontSize: 14, color: PALETTE.text3, marginTop: 12 }}>Sin hábitos. Tocá + para agregar.</div>
+          </div>
+        ) : (
+          <div style={{ ...cardCss, padding: 0, overflow: 'hidden' }}>
+            {habitos.map((h, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 12, borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 11, background: h.hechoHoy ? PALETTE.accentSoft : PALETTE.surfaceStrong, color: h.hechoHoy ? PALETTE.accent : PALETTE.text2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="flame" size={18} sw={1.6}/>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14.5, color: PALETTE.text, fontWeight: 500 }}>{h.n}</div>
+                  <div style={{ fontSize: 11.5, color: PALETTE.text3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Icon name="flame" size={11} color={PALETTE.amber} sw={1.6}/>
+                    {h.streak} días
+                  </div>
+                </div>
+                <button onClick={() => toggle(i)} style={{ width: 30, height: 30, borderRadius: 15, flexShrink: 0, cursor: 'pointer', border: h.hechoHoy ? 'none' : `1.5px solid ${PALETTE.text4}`, background: h.hechoHoy ? PALETTE.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {h.hechoHoy && <Icon name="check2" size={16} sw={2.6} color={PALETTE.on}/>}
+                </button>
+                <button onClick={() => borrar(i)} style={{ background: 'none', border: 'none', color: PALETTE.text4, cursor: 'pointer', padding: 4 }}>
+                  <Icon name="x" size={14} sw={2}/>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// NOTAS
+// ─────────────────────────────────────────────────────────
+function NotasScreen() {
+  const [notas, setNotas] = React.useState(() => loadLS('nucleo_notas', []));
+  const [tag, setTag] = React.useState('Todas');
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [form, setForm] = React.useState({ t: '', cuerpo: '', tag: '' });
+
+  const tags = ['Todas', ...Array.from(new Set(notas.map(n => n.tag).filter(Boolean)))];
+
+  const addNota = () => {
+    if (!form.t.trim()) return;
+    const updated = [{ t: form.t.trim(), cuerpo: form.cuerpo.trim(), tag: form.tag.trim() || 'General', fecha: 'Ahora' }, ...notas];
+    setNotas(updated); saveLS('nucleo_notas', updated); setForm({ t: '', cuerpo: '', tag: '' }); setAddOpen(false);
+  };
+  const borrar = (i) => {
+    const updated = notas.filter((_, j) => j !== i);
+    setNotas(updated); saveLS('nucleo_notas', updated);
+  };
+
+  const filtradas = notas.filter(n => tag === 'Todas' || n.tag === tag);
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader
+        title="Notas"
+        sub={notas.length > 0 ? `${notas.length} nota${notas.length !== 1 ? 's' : ''}` : 'Sin notas'}
+        action={<IconButton icon="plus" accent onClick={() => setAddOpen(true)}/>}
+      />
+
+      {tags.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, padding: '0 22px 18px', overflowX: 'auto' }}>
+          {tags.map(t => (
+            <button key={t} onClick={() => setTag(t)} style={{
+              padding: '7px 14px', borderRadius: 14,
+              background: tag === t ? PALETTE.text : PALETTE.surface,
+              color: tag === t ? PALETTE.bg : PALETTE.text2,
+              border: 'none', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>{t}</button>
+          ))}
+        </div>
+      )}
+
+      {addOpen && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ ...cardCss, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input autoFocus value={form.t} onChange={e => setForm(f => ({...f, t: e.target.value}))}
+              placeholder="Título..."
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: PALETTE.text, fontSize: 16, fontWeight: 600, fontFamily: 'inherit' }}/>
+            <textarea value={form.cuerpo} onChange={e => setForm(f => ({...f, cuerpo: e.target.value}))}
+              placeholder="Contenido (opcional)..."
+              rows={3}
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: PALETTE.text2, fontSize: 14, fontFamily: 'inherit', resize: 'none' }}/>
+            <input value={form.tag} onChange={e => setForm(f => ({...f, tag: e.target.value}))}
+              placeholder="Etiqueta (ej: DJ, General...)"
+              style={{ background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`, borderRadius: 10, padding: '8px 12px', color: PALETTE.text2, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+            <button onClick={addNota} style={{ background: PALETTE.accent, color: PALETTE.on, border: 'none', borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Guardar nota</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {filtradas.length === 0 ? (
+          <div style={{ ...cardCss, padding: 32, textAlign: 'center' }}>
+            <Icon name="note" size={32} color={PALETTE.text4} sw={1.2}/>
+            <div style={{ fontSize: 14, color: PALETTE.text3, marginTop: 12 }}>Sin notas. Tocá + para agregar.</div>
+          </div>
+        ) : filtradas.map((n, i) => (
+          <div key={i} style={{ ...cardCss, position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+              {n.tag ? <Pill bg={PALETTE.surfaceStrong} color={PALETTE.text2}>{n.tag}</Pill> : <span/>}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ fontSize: 11, color: PALETTE.text3 }}>{n.fecha}</div>
+                <button onClick={() => borrar(notas.indexOf(n))} style={{ background: 'none', border: 'none', color: PALETTE.text4, cursor: 'pointer', padding: 2 }}>
+                  <Icon name="x" size={13} sw={2}/>
+                </button>
+              </div>
+            </div>
+            <div style={{ fontSize: 17, color: PALETTE.text, lineHeight: 1.3, fontWeight: 600, letterSpacing: -0.3, marginBottom: n.cuerpo ? 6 : 0 }}>{n.t}</div>
+            {n.cuerpo && <div style={{ fontSize: 13, color: PALETTE.text2, lineHeight: 1.5 }}>{n.cuerpo}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// METAS
+// ─────────────────────────────────────────────────────────
+function MetasScreen() {
+  const [metas, setMetas] = React.useState(() => loadLS('nucleo_metas', []));
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [form, setForm] = React.useState({ t: '', cat: '', fecha: '' });
+
+  const addMeta = () => {
+    if (!form.t.trim()) return;
+    const updated = [...metas, { t: form.t.trim(), cat: form.cat.trim() || 'General', pct: 0, fecha: form.fecha.trim() || 'Sin fecha' }];
+    setMetas(updated); saveLS('nucleo_metas', updated); setForm({ t: '', cat: '', fecha: '' }); setAddOpen(false);
+  };
+  const borrar = (i) => {
+    const updated = metas.filter((_, j) => j !== i);
+    setMetas(updated); saveLS('nucleo_metas', updated);
+  };
+  const setProgress = (i, pct) => {
+    const updated = metas.map((m, j) => j === i ? { ...m, pct } : m);
+    setMetas(updated); saveLS('nucleo_metas', updated);
+  };
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader title="Metas"
+        sub={metas.length > 0 ? `${metas.length} activa${metas.length !== 1 ? 's' : ''}` : 'Sin metas'}
+        action={<IconButton icon="plus" accent onClick={() => setAddOpen(true)}/>}/>
+
+      {addOpen && (
+        <div style={{ padding: '0 16px 16px' }}>
+          <div style={{ ...cardCss, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input autoFocus value={form.t} onChange={e => setForm(f => ({...f, t: e.target.value}))}
+              placeholder="¿Qué querés lograr?"
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: PALETTE.text, fontSize: 16, fontWeight: 600, fontFamily: 'inherit' }}/>
+            <input value={form.cat} onChange={e => setForm(f => ({...f, cat: e.target.value}))}
+              placeholder="Categoría (ej: DJ, Finanzas...)"
+              style={{ background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`, borderRadius: 10, padding: '8px 12px', color: PALETTE.text2, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+            <input value={form.fecha} onChange={e => setForm(f => ({...f, fecha: e.target.value}))}
+              placeholder="Fecha objetivo (ej: Dic 2026)"
+              style={{ background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`, borderRadius: 10, padding: '8px 12px', color: PALETTE.text2, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+            <button onClick={addMeta} style={{ background: PALETTE.accent, color: PALETTE.on, border: 'none', borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Agregar meta</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {metas.length === 0 ? (
+          <div style={{ ...cardCss, padding: 32, textAlign: 'center' }}>
+            <Icon name="target" size={32} color={PALETTE.text4} sw={1.2}/>
+            <div style={{ fontSize: 14, color: PALETTE.text3, marginTop: 12 }}>Sin metas. Tocá + para agregar.</div>
+          </div>
+        ) : metas.map((m, i) => (
+          <div key={i} style={{ ...cardCss }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Pill bg={PALETTE.surfaceStrong} color={PALETTE.text2}>{m.cat}</Pill>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ fontSize: 11, color: PALETTE.text3 }}>{m.fecha}</div>
+                <button onClick={() => borrar(i)} style={{ background: 'none', border: 'none', color: PALETTE.text4, cursor: 'pointer', padding: 2 }}><Icon name="x" size={13} sw={2}/></button>
+              </div>
+            </div>
+            <div style={{ fontSize: 16, color: PALETTE.text, fontWeight: 600, letterSpacing: -0.3, marginBottom: 12 }}>{m.t}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input type="range" min={0} max={100} value={m.pct} onChange={e => setProgress(i, +e.target.value)}
+                style={{ flex: 1, accentColor: PALETTE.accent }}/>
+              <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: 36 }}>{m.pct}%</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// DIARIO
+// ─────────────────────────────────────────────────────────
+const PROMPTS = [
+  '¿Qué hiciste hoy que tu yo de hace un año no podía hacer?',
+  '¿Qué te desafió hoy y cómo lo manejaste?',
+  '¿Qué querés lograr mañana?',
+  '¿Algo que aprendiste hoy, aunque sea pequeño?',
+  '¿Cómo estuvo tu energía hoy?',
+];
+
+function DiarioScreen() {
+  const [entradas, setEntradas] = React.useState(() => loadLS('nucleo_diario', []));
+  const [texto, setTexto] = React.useState('');
+  const [escribiendo, setEscribiendo] = React.useState(false);
+  const prompt = PROMPTS[new Date().getDay() % PROMPTS.length];
+
+  const guardar = () => {
+    if (!texto.trim()) return;
+    const now = new Date();
+    const fecha = now.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
+    const updated = [{ fecha, preview: texto.trim(), mood: '📝' }, ...entradas];
+    setEntradas(updated); saveLS('nucleo_diario', updated); setTexto(''); setEscribiendo(false);
+  };
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader title="Diario"
+        sub={entradas.length > 0 ? `${entradas.length} entrada${entradas.length !== 1 ? 's' : ''}` : 'Sin entradas'}
+        action={<IconButton icon="plus" accent onClick={() => setEscribiendo(true)}/>}/>
+
+      <div style={{ padding: '0 16px 18px' }}>
+        <div style={{ ...cardCss, background: PALETTE.accentSoft, border: `0.5px solid ${PALETTE.accentDim}` }}>
+          <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase', color: PALETTE.accent, marginBottom: 8 }}>Pregunta del día</div>
+          <div style={{ fontSize: 17, color: PALETTE.text, fontWeight: 500, letterSpacing: -0.3, lineHeight: 1.35, marginBottom: 14 }}>{prompt}</div>
+          {escribiendo ? (
+            <>
+              <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={4}
+                placeholder="Escribí acá..."
+                style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: `0.5px solid ${PALETTE.border}`, borderRadius: 12, padding: 12, color: PALETTE.text, fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: 10 }}/>
+              <button onClick={guardar} style={{ background: PALETTE.accent, color: PALETTE.on, border: 'none', padding: '10px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Guardar entrada</button>
+            </>
+          ) : (
+            <button onClick={() => setEscribiendo(true)} style={{ background: PALETTE.accent, color: PALETTE.on, border: 'none', padding: '10px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Responder</button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding: '0 16px' }}>
+        <SectionLabel>Entradas recientes</SectionLabel>
+        {entradas.length === 0 ? (
+          <div style={{ ...cardCss, padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: PALETTE.text3 }}>Tu diario está vacío. Respondé la pregunta del día para empezar.</div>
+          </div>
+        ) : (
+          <div style={{ ...cardCss, padding: 0, overflow: 'hidden' }}>
+            {entradas.map((d, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', padding: '14px 16px', gap: 14, borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none' }}>
+                <div style={{ fontSize: 22, flexShrink: 0 }}>{d.mood}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: PALETTE.text3, marginBottom: 4, fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase' }}>{d.fecha}</div>
+                  <div style={{ fontSize: 13.5, color: PALETTE.text2, lineHeight: 1.4 }}>{d.preview}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { HoyScreen, TareasScreen, AgendaScreen, HabitosScreen, NotasScreen, MetasScreen, DiarioScreen });
+
+// finanzas.jsx — Finanzas (Resumen, Gastos, Ingresos DJ, Suscripciones)
+
+function FinanzasScreen() {
+  const [tab, setTab] = React.useState('resumen');
+  const tabs = [
+    ['resumen', 'Resumen'],
+    ['gastos', 'Gastos'],
+    ['ingresos', 'Ingresos'],
+    ['suscripciones', 'Suscripciones'],
+  ];
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader
+        kicker="Mayo 2026"
+        title="Finanzas"
+        action={<IconButton icon="plus" accent/>}
+      />
+
+      <div style={{ display: 'flex', gap: 6, padding: '0 22px 16px', overflowX: 'auto' }}>
+        {tabs.map(([id, n]) => (
+          <button key={id} onClick={() => setTab(id)} style={{
+            padding: '7px 14px', borderRadius: 14,
+            background: tab === id ? PALETTE.text : PALETTE.surface,
+            color: tab === id ? PALETTE.bg : PALETTE.text2,
+            border: 'none', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>{n}</button>
+        ))}
+      </div>
+
+      {tab === 'resumen' && <FinResumen/>}
+      {tab === 'gastos' && <FinGastos/>}
+      {tab === 'ingresos' && <FinIngresos/>}
+      {tab === 'suscripciones' && <FinSuscripciones/>}
+    </div>
+  );
+}
+
+function FinResumen() {
+  const p = DATA.patrimonio;
+  const totalArs = p.arsBanco + p.arsEfectivo;
+  const now = new Date();
+  const mes = now.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+  return (
+    <div>
+      {/* Patrimonio total */}
+      <div style={{ padding: '0 22px 22px' }}>
+        <div style={{ fontSize: 11, color: PALETTE.text3, marginBottom: 6, letterSpacing: 1.4,
+          fontWeight: 600, textTransform: 'uppercase' }}>Patrimonio total</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+          <div style={{ fontSize: 44, fontWeight: 600, letterSpacing: -1.5, color: PALETTE.text,
+            fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            ${(totalArs / 1000000).toFixed(2)}M
+          </div>
+          <div style={{ fontSize: 14, color: PALETTE.text3 }}>ARS</div>
+        </div>
+        <div style={{ fontSize: 14, color: PALETTE.text2 }}>
+          + <span style={{ color: PALETTE.accent }}>US$ {p.usdEfectivo.toLocaleString()}</span> en efectivo
+        </div>
+      </div>
+
+      {/* Composición */}
+      <div style={{ padding: '0 16px 18px' }}>
+        <SectionLabel>Composición</SectionLabel>
+        <div style={{ ...cardCss, padding: 0 }}>
+          {[
+            { n: 'Efectivo ARS', v: p.arsEfectivo, c: PALETTE.accent },
+            { n: 'Banco Galicia', v: p.arsBanco, c: PALETTE.cool },
+            { n: 'USD efectivo', v: `US$ ${p.usdEfectivo.toLocaleString()}`, c: PALETTE.amber, raw: true },
+          ].map((row, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', padding: '14px 18px', gap: 12,
+              borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: row.c }}/>
+              <div style={{ flex: 1, fontSize: 14, color: PALETTE.text, fontWeight: 500 }}>{row.n}</div>
+              <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                {row.raw ? row.v : fmt(row.v)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Próximos vencimientos */}
+      <div style={{ padding: '0 16px' }}>
+        <SectionLabel>Próximos vencimientos</SectionLabel>
+        <div style={{ ...cardCss, padding: 0 }}>
+          {DATA.gastosFijosARS
+            .filter(g => g.estado !== 'pagado')
+            .sort((a, b) => a.vto - b.vto)
+            .slice(0, 5)
+            .map((g, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', padding: '13px 18px', gap: 12,
+              borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: g.estado === 'vence-pronto' ? PALETTE.warnSoft : PALETTE.surfaceStrong,
+                color: g.estado === 'vence-pronto' ? PALETTE.warn : PALETTE.text2,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{g.vto}</div>
+                <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 1 }}>
+                  {now.toLocaleDateString('es-AR', { month: 'short' })}
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 500 }}>{g.c}</div>
+                <div style={{ fontSize: 11.5, color: PALETTE.text3, marginTop: 2 }}>{g.cat}</div>
+              </div>
+              <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(g.m)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FinGastos() {
+  const [gastos, setGastos] = React.useState(() => loadLS('nucleo_gastos_var', []));
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [form, setForm] = React.useState({ c: '', cat: '', m: '' });
+
+  const addGasto = () => {
+    if (!form.c.trim() || !form.m) return;
+    const now = new Date();
+    const fecha = now.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    const updated = [{ c: form.c.trim(), cat: form.cat.trim() || 'General', m: +form.m, fecha }, ...gastos];
+    setGastos(updated); saveLS('nucleo_gastos_var', updated); setForm({ c: '', cat: '', m: '' }); setAddOpen(false);
+  };
+  const borrar = (i) => {
+    const updated = gastos.filter((_, j) => j !== i);
+    setGastos(updated); saveLS('nucleo_gastos_var', updated);
+  };
+
+  // Calcular totales fijos reales
+  const totalFijosARS = DATA.gastosFijosARS.reduce((s, g) => s + g.m, 0);
+  const totalVar = gastos.reduce((s, g) => s + g.m, 0);
+
+  return (
+    <div>
+      {/* Resumen fijos */}
+      <div style={{ padding: '0 16px 18px' }}>
+        <SectionLabel>Gastos fijos del mes</SectionLabel>
+        <div style={{ ...cardCss, padding: 16 }}>
+          <div style={{ fontSize: 11, color: PALETTE.text3, marginBottom: 4 }}>Total fijos ARS</div>
+          <div style={{ fontSize: 28, fontWeight: 600, color: PALETTE.warn, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.5 }}>{fmt(totalFijosARS)}</div>
+        </div>
+      </div>
+
+      {/* Variables */}
+      <div style={{ padding: '0 16px' }}>
+        <SectionLabel action={<button onClick={() => setAddOpen(true)} style={{ background: 'none', border: 'none', color: PALETTE.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>+ Agregar</button>}>
+          Gastos variables
+        </SectionLabel>
+
+        {addOpen && (
+          <div style={{ ...cardCss, padding: 16, marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input autoFocus value={form.c} onChange={e => setForm(f => ({...f, c: e.target.value}))}
+              placeholder="Descripción (ej: YPF)"
+              style={{ background: 'transparent', border: 'none', outline: 'none', color: PALETTE.text, fontSize: 15, fontFamily: 'inherit' }}/>
+            <input value={form.cat} onChange={e => setForm(f => ({...f, cat: e.target.value}))}
+              placeholder="Categoría"
+              style={{ background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`, borderRadius: 10, padding: '8px 12px', color: PALETTE.text2, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+            <input type="number" value={form.m} onChange={e => setForm(f => ({...f, m: e.target.value}))}
+              placeholder="Monto en ARS"
+              style={{ background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`, borderRadius: 10, padding: '8px 12px', color: PALETTE.text2, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
+            <button onClick={addGasto} style={{ background: PALETTE.accent, color: PALETTE.on, border: 'none', borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Guardar gasto</button>
+          </div>
+        )}
+
+        {gastos.length === 0 ? (
+          <div style={{ ...cardCss, padding: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: PALETTE.text3 }}>Sin gastos variables registrados. Tocá + Agregar.</div>
+          </div>
+        ) : (
+          <div style={{ ...cardCss, padding: 0 }}>
+            {gastos.map((g, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '13px 18px', gap: 12, borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 500 }}>{g.c}</div>
+                  <div style={{ fontSize: 11.5, color: PALETTE.text3, marginTop: 2 }}>{g.cat} · {g.fecha}</div>
+                </div>
+                <div style={{ fontSize: 14, color: PALETTE.warn, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>−{fmt(g.m)}</div>
+                <button onClick={() => borrar(i)} style={{ background: 'none', border: 'none', color: PALETTE.text4, cursor: 'pointer', padding: 4 }}><Icon name="x" size={13} sw={2}/></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FinIngresos() {
+  const fmtMonto = (e) => e.cur === 'USD'
+    ? `U$D ${e.total.toLocaleString('es-AR')}`
+    : fmt(e.total);
+  const fmtPagado = (e) => e.cur === 'USD'
+    ? `U$D ${e.pagado.toLocaleString('es-AR')}`
+    : fmt(e.pagado);
+  const falta = (e) => e.total - e.pagado;
+  const fmtFalta = (e) => e.cur === 'USD'
+    ? `U$D ${falta(e).toLocaleString('es-AR')}`
+    : fmt(falta(e));
+
+  const pendARS = DATA.eventosDJ.filter(e => e.cur === 'ARS' && e.estado !== 'cobrado').reduce((a, e) => a + falta(e), 0);
+  const pendUSD = DATA.eventosDJ.filter(e => e.cur === 'USD' && e.estado !== 'cobrado').reduce((a, e) => a + falta(e), 0);
+  const cobARS  = DATA.eventosDJ.filter(e => e.cur === 'ARS').reduce((a, e) => a + e.pagado, 0);
+  const cobUSD  = DATA.eventosDJ.filter(e => e.cur === 'USD').reduce((a, e) => a + e.pagado, 0);
+
+  const [filtro, setFiltro] = React.useState('todos');
+  const visible = DATA.eventosDJ.filter(e => {
+    if (filtro === 'pendiente') return e.estado !== 'cobrado';
+    if (filtro === 'cobrado') return e.estado === 'cobrado';
+    return true;
+  });
+
+  return (
+    <div>
+      {/* Resumen */}
+      <div style={{ padding: '0 16px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ ...cardCss, padding: 16 }}>
+          <div style={{ fontSize: 10, color: PALETTE.text3, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Por cobrar</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: PALETTE.warn, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.3 }}>{fmt(pendARS)}</div>
+          {pendUSD > 0 && <div style={{ fontSize: 12, color: PALETTE.cool, marginTop: 2 }}>+ U$D {pendUSD.toLocaleString('es-AR')}</div>}
+        </div>
+        <div style={{ ...cardCss, padding: 16 }}>
+          <div style={{ fontSize: 10, color: PALETTE.text3, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Cobrado total</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: PALETTE.accent, fontVariantNumeric: 'tabular-nums', letterSpacing: -0.3 }}>{fmt(cobARS)}</div>
+          {cobUSD > 0 && <div style={{ fontSize: 12, color: PALETTE.cool, marginTop: 2 }}>+ U$D {cobUSD.toLocaleString('es-AR')}</div>}
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: 6, padding: '0 16px 14px' }}>
+        {[['todos','Todos'],['pendiente','Por cobrar'],['cobrado','Cobrados']].map(([id,n]) => (
+          <button key={id} onClick={() => setFiltro(id)} style={{
+            padding: '6px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+            background: filtro === id ? PALETTE.text : PALETTE.surface,
+            color: filtro === id ? PALETTE.bg : PALETTE.text2,
+          }}>{n}</button>
+        ))}
+      </div>
+
+      {/* Lista */}
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {visible.map((e, i) => (
+          <div key={i} style={{ ...cardCss, padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10.5, color: PALETTE.text3, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{e.fecha}</div>
+                <div style={{ fontSize: 14.5, color: PALETTE.text, fontWeight: 600, lineHeight: 1.2 }}>{e.evento}</div>
+                {e.lugar ? <div style={{ fontSize: 11.5, color: PALETTE.text3, marginTop: 2 }}>{e.lugar}</div> : null}
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                <div style={{ fontSize: 16, color: PALETTE.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtMonto(e)}</div>
+                {e.estado === 'cobrado' && <Pill bg={PALETTE.accentSoft} color={PALETTE.accent}>✓ Cobrado</Pill>}
+                {e.estado === 'parcial' && <Pill bg={PALETTE.amberSoft} color={PALETTE.amber}>Parcial</Pill>}
+                {e.estado === 'pendiente' && <Pill bg={PALETTE.warnSoft} color={PALETTE.warn}>Pendiente</Pill>}
+              </div>
+            </div>
+            {e.estado !== 'cobrado' && (
+              <div style={{ display: 'flex', gap: 16, padding: '8px 0 0', borderTop: `0.5px solid ${PALETTE.border}`, fontSize: 12 }}>
+                <span style={{ color: PALETTE.text3 }}>Pagado: <span style={{ color: PALETTE.text }}>{fmtPagado(e)}</span></span>
+                <span style={{ color: PALETTE.text3 }}>Falta: <span style={{ color: PALETTE.warn }}>{fmtFalta(e)}</span></span>
+                {e.cuotas && <span style={{ color: PALETTE.text3 }}>Cuotas: <span style={{ color: PALETTE.text }}>{e.cuotas}</span></span>}
+              </div>
+            )}
+            {e.contacto && <div style={{ fontSize: 11, color: PALETTE.text3, marginTop: 6 }}>📞 {e.contacto}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FinSuscripciones() {
+  const totalARS = DATA.gastosFijosARS.reduce((a, g) => a + g.m, 0);
+  const totalUSD = DATA.gastosFijosUSD.reduce((a, g) => a + g.m, 0);
+
+  return (
+    <div>
+      <div style={{ padding: '0 22px 18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ ...cardCss, padding: 16 }}>
+            <div style={{ fontSize: 10.5, color: PALETTE.text3, fontWeight: 600,
+              letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>Mes en ARS</div>
+            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.6, color: PALETTE.text,
+              fontVariantNumeric: 'tabular-nums' }}>{fmt(totalARS)}</div>
+            <div style={{ fontSize: 11, color: PALETTE.text3, marginTop: 4 }}>{DATA.gastosFijosARS.length} ítems</div>
+          </div>
+          <div style={{ ...cardCss, padding: 16 }}>
+            <div style={{ fontSize: 10.5, color: PALETTE.text3, fontWeight: 600,
+              letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>Mes en USD</div>
+            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.6, color: PALETTE.text,
+              fontVariantNumeric: 'tabular-nums' }}>US${totalUSD.toFixed(2)}</div>
+            <div style={{ fontSize: 11, color: PALETTE.text3, marginTop: 4 }}>{DATA.gastosFijosUSD.length} ítems</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '0 16px 18px' }}>
+        <SectionLabel>Pesos · Fijos del mes</SectionLabel>
+        <div style={{ ...cardCss, padding: 0 }}>
+          {DATA.gastosFijosARS.map((g, i) => {
+            const stColor = g.estado === 'pagado' ? PALETTE.accent
+              : g.estado === 'vence-pronto' ? PALETTE.warn : PALETTE.text3;
+            const stTxt = g.estado === 'pagado' ? 'Pagado'
+              : g.estado === 'vence-pronto' ? `Vence en ${g.vto - 6}d` : `Día ${g.vto}`;
+            return (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', padding: '12px 18px', gap: 12,
+                borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 500 }}>{g.c}</div>
+                  <div style={{ fontSize: 11.5, color: stColor, marginTop: 2, fontWeight: 500 }}>{stTxt}</div>
+                </div>
+                <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums' }}>{fmt(g.m)}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ padding: '0 16px' }}>
+        <SectionLabel>Dólares · Suscripciones</SectionLabel>
+        <div style={{ ...cardCss, padding: 0 }}>
+          {DATA.gastosFijosUSD.map((g, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', padding: '12px 18px', gap: 12,
+              borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 500 }}>{g.c}</div>
+                <div style={{ fontSize: 11.5, color: PALETTE.text3, marginTop: 2 }}>{g.cat}</div>
+              </div>
+              <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums' }}>US${g.m.toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.FinanzasScreen = FinanzasScreen;
+
+// nutricion.jsx — Nutrición con IA (cámara → análisis macros)
+
+function NutricionScreen() {
+  const [view, setView] = React.useState('home'); // home | camera | calc
+  if (view === 'camera') return <CamaraNutricion onBack={() => setView('home')}/>;
+  if (view === 'calc') return <CalculadoraMacros onBack={() => setView('home')}/>;
+
+  const obj = DATA.macrosObjetivo;
+  const hoy = loadLS('nucleo_macros_hoy', { kcal: 0, prot: 0, carb: 0, grasa: 0 });
+  const now = new Date();
+  const fechaHoy = now.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <ScreenHeader
+        kicker={`Hoy · ${fechaHoy}`}
+        title="Nutrición"
+        sub={hoy.kcal > 0 ? `${hoy.kcal} de ${obj.kcal} kcal · ${Math.round((hoy.kcal/obj.kcal)*100)}%` : `Objetivo: ${obj.kcal} kcal`}
+        action={
+          <button onClick={() => setView('calc')} style={{
+            background: PALETTE.surfaceStrong, color: PALETTE.text, border: `0.5px solid ${PALETTE.border}`,
+            borderRadius: 18, padding: '8px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <Icon name="calc" size={14} sw={1.6}/>
+            Macros
+          </button>
+        }
+      />
+
+      {/* Anillos macros */}
+      <div style={{ padding: '0 22px 22px' }}>
+        <div style={{ ...cardCss, padding: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <MacroRing kcal={hoy.kcal} obj={obj.kcal}/>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <MacroRow label="Proteína" v={hoy.prot} obj={obj.prot} unit="g" color={PALETTE.accent}/>
+              <MacroRow label="Carbos" v={hoy.carb} obj={obj.carb} unit="g" color={PALETTE.cool}/>
+              <MacroRow label="Grasas" v={hoy.grasa} obj={obj.grasa} unit="g" color={PALETTE.amber}/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA cámara — feature estrella */}
+      <div style={{ padding: '0 16px 22px' }}>
+        <button onClick={() => setView('camera')} style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 16,
+          padding: 20, borderRadius: 22, cursor: 'pointer', textAlign: 'left',
+          background: `linear-gradient(135deg, ${PALETTE.accentSoft}, rgba(255,255,255,0.02))`,
+          border: `0.5px solid ${PALETTE.accentDim}`, color: PALETTE.text,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 18, flexShrink: 0,
+            background: PALETTE.accent, color: PALETTE.on,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `0 8px 20px ${PALETTE.accentDim}`,
+          }}>
+            <Icon name="camera" size={28} sw={1.6}/>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '3px 9px', borderRadius: 7,
+              background: PALETTE.accent, color: PALETTE.on,
+              fontSize: 9.5, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase',
+              marginBottom: 6,
+            }}>
+              <Icon name="sparkle" size={11} sw={2}/>
+              IA
+            </div>
+            <div style={{ fontSize: 17, color: PALETTE.text, fontWeight: 600,
+              letterSpacing: -0.3, marginBottom: 3 }}>Analizar comida con foto</div>
+            <div style={{ fontSize: 12.5, color: PALETTE.text2, lineHeight: 1.4 }}>
+              Sacale una foto al plato. Detecto alimentos y calculo macros.
+            </div>
+          </div>
+          <Icon name="chev" size={18} color={PALETTE.text3}/>
+        </button>
+      </div>
+
+      {/* Tip vacío */}
+      <div style={{ padding: '0 16px' }}>
+        <div style={{
+          ...cardCss, padding: 20, textAlign: 'center',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+        }}>
+          <Icon name="camera" size={28} color={PALETTE.text3} sw={1.2}/>
+          <div style={{ fontSize: 13, color: PALETTE.text3, fontWeight: 300, lineHeight: 1.5 }}>
+            Usá la cámara IA para registrar lo que comés.<br/>Los macros se calculan automáticamente.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MacroRing({ kcal, obj }) {
+  const pct = Math.min(kcal / obj, 1);
+  const r = 50;
+  const C = 2 * Math.PI * r;
+  return (
+    <div style={{ position: 'relative', width: 130, height: 130, flexShrink: 0 }}>
+      <svg width="130" height="130" viewBox="0 0 130 130">
+        <circle cx="65" cy="65" r={r} fill="none" stroke={PALETTE.surfaceStrong} strokeWidth="10"/>
+        <circle cx="65" cy="65" r={r} fill="none" stroke={PALETTE.accent} strokeWidth="10"
+          strokeDasharray={`${C * pct} ${C}`} strokeLinecap="round"
+          transform="rotate(-90 65 65)"/>
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.6, color: PALETTE.text,
+          fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{kcal}</div>
+        <div style={{ fontSize: 10, color: PALETTE.text3, marginTop: 2,
+          fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>de {obj}</div>
+        <div style={{ fontSize: 10, color: PALETTE.text3, fontWeight: 600,
+          letterSpacing: 1, textTransform: 'uppercase' }}>kcal</div>
+      </div>
+    </div>
+  );
+}
+
+function MacroRow({ label, v, obj, unit, color }) {
+  const pct = Math.min(v / obj, 1);
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5,
+        alignItems: 'baseline' }}>
+        <div style={{ fontSize: 12, color: PALETTE.text2, fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: 12, color: PALETTE.text, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+          {v}<span style={{ color: PALETTE.text3 }}>/{obj}{unit}</span>
+        </div>
+      </div>
+      <div style={{ height: 4, borderRadius: 2, background: PALETTE.surfaceStrong, overflow: 'hidden' }}>
+        <div style={{ width: `${pct * 100}%`, height: '100%', background: color, borderRadius: 2 }}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── Cámara: flujo de análisis IA ───
+function CamaraNutricion({ onBack }) {
+  const [stage, setStage] = React.useState('aim'); // aim | analyzing | result | error | nokey
+  const [progress, setProgress] = React.useState(0);
+  const [camError, setCamError] = React.useState(false);
+  const [detected, setDetected] = React.useState([]);
+  const [total, setTotal] = React.useState({ kcal: 0, p: 0, c: 0, g: 0 });
+  const [errorMsg, setErrorMsg] = React.useState('');
+  const [apiKey, setApiKey] = React.useState(() => localStorage.getItem('nucleo_api_key') || '');
+  const [keyInput, setKeyInput] = React.useState('');
+  const videoRef = React.useRef(null);
+  const streamRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
+
+  React.useEffect(() => {
+    navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+      })
+      .catch(() => setCamError(true));
+    return () => { if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop()); };
+  }, []);
+
+  const captureAndAnalyze = async () => {
+    const key = apiKey || localStorage.getItem('nucleo_api_key');
+    if (!key) { setStage('nokey'); return; }
+
+    setStage('analyzing');
+    setProgress(0);
+
+    // Capturar frame del video
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+    // Animación de progreso mientras espera la API
+    let p = 0;
+    const progInterval = setInterval(() => {
+      p = Math.min(p + 2, 88);
+      setProgress(p);
+    }, 120);
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-6',
+          max_tokens: 1024,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+              { type: 'text', text: `Analizá esta imagen de comida con precisión. Identificá SOLO lo que realmente ves en la imagen. Para cada alimento visible estimá el peso en gramos y calculá calorías y macros basándote en tablas nutricionales estándar. Respondé ÚNICAMENTE con un JSON válido, sin texto extra, en este formato exacto:
+{"alimentos":[{"n":"nombre del alimento","g":"Xg","kcal":X,"p":X,"c":X,"gr":X}],"total":{"kcal":X,"p":X,"c":X,"g":X}}
+Donde p=proteínas, c=carbohidratos, gr/g=grasas, todos en gramos enteros. Si no hay comida visible, devolvé {"alimentos":[],"total":{"kcal":0,"p":0,"c":0,"g":0}}.` }
+            ]
+          }]
+        })
+      });
+
+      clearInterval(progInterval);
+      setProgress(95);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 401) { setStage('nokey'); setErrorMsg('API key inválida.'); return; }
+        throw new Error(err.error?.message || `Error ${res.status}`);
+      }
+
+      const data = await res.json();
+      const text = data.content[0].text.trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Respuesta inválida de la IA');
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      setDetected(parsed.alimentos || []);
+      setTotal(parsed.total || { kcal: 0, p: 0, c: 0, g: 0 });
+      setProgress(100);
+      setTimeout(() => setStage('result'), 300);
+
+    } catch(err) {
+      clearInterval(progInterval);
+      setErrorMsg(err.message);
+      setStage('error');
+    }
+  };
+
+  const saveKey = () => {
+    const k = keyInput.trim();
+    if (!k) return;
+    localStorage.setItem('nucleo_api_key', k);
+    setApiKey(k);
+    setKeyInput('');
+    setStage('aim');
+  };
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, background: '#000', zIndex: 50,
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      {/* viewfinder */}
+      <div style={{
+        flex: 1, position: 'relative',
+        background: '#000',
+        overflow: 'hidden',
+      }}>
+        {/* top bar */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0,
+          padding: '60px 20px 18px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)',
+          zIndex: 5,
+        }}>
+          <button onClick={onBack} style={{
+            width: 36, height: 36, borderRadius: 18, background: 'rgba(255,255,255,0.15)',
+            border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', cursor: 'pointer',
+          }}>
+            <Icon name="x" size={16} sw={2}/>
+          </button>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '5px 12px', borderRadius: 12,
+            background: 'rgba(0,0,0,0.5)', color: PALETTE.accent,
+            fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase',
+            backdropFilter: 'blur(10px)',
+          }}>
+            <Icon name="sparkle" size={12} sw={2}/>
+            Análisis IA
+          </div>
+          <div style={{ width: 36 }}/>
+        </div>
+
+        {/* cámara real */}
+        {!camError ? (
+          <video ref={videoRef} autoPlay playsInline muted style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            objectFit: 'cover',
+          }}/>
+        ) : (
+          <div style={{
+            position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 12,
+          }}>
+            <Icon name="camera" size={40} color="rgba(255,255,255,0.3)" sw={1}/>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: 300,
+              textAlign: 'center', maxWidth: 220 }}>
+              Habilitá la cámara en los permisos del navegador para usar esta función
+            </div>
+          </div>
+        )}
+
+        {/* scan line durante análisis */}
+        {stage === 'analyzing' && (
+          <div style={{
+            position: 'absolute', left: 0, right: 0, height: 2, background: PALETTE.accent,
+            top: `${progress}%`, boxShadow: `0 0 20px ${PALETTE.accent}`, opacity: 0.8,
+            pointerEvents: 'none',
+          }}/>
+        )}
+
+        {/* aim guide */}
+        {stage === 'aim' && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: 280, height: 280, borderRadius: 24,
+            border: `2px dashed rgba(255,255,255,0.4)`, pointerEvents: 'none',
+          }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{
+                position: 'absolute',
+                ...(i === 0 ? { top: -2, left: -2 } : i === 1 ? { top: -2, right: -2 }
+                  : i === 2 ? { bottom: -2, left: -2 } : { bottom: -2, right: -2 }),
+                width: 24, height: 24,
+                borderTop: i < 2 ? `3px solid ${PALETTE.accent}` : 'none',
+                borderBottom: i >= 2 ? `3px solid ${PALETTE.accent}` : 'none',
+                borderLeft: i % 2 === 0 ? `3px solid ${PALETTE.accent}` : 'none',
+                borderRight: i % 2 === 1 ? `3px solid ${PALETTE.accent}` : 'none',
+                borderTopLeftRadius: i === 0 ? 8 : 0,
+                borderTopRightRadius: i === 1 ? 8 : 0,
+                borderBottomLeftRadius: i === 2 ? 8 : 0,
+                borderBottomRightRadius: i === 3 ? 8 : 0,
+              }}/>
+            ))}
+          </div>
+        )}
+
+        {stage === 'aim' && (
+          <div style={{
+            position: 'absolute', bottom: 140, left: 0, right: 0, textAlign: 'center',
+            color: '#fff', fontSize: 14, fontWeight: 500, letterSpacing: -0.1,
+          }}>Encuadrá el plato</div>
+        )}
+
+        {stage === 'analyzing' && (
+          <div style={{
+            position: 'absolute', bottom: 140, left: 24, right: 24, textAlign: 'center',
+          }}>
+            <div style={{ color: PALETTE.accent, fontSize: 13, fontWeight: 700,
+              letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>
+              Identificando alimentos...
+            </div>
+            <div style={{ height: 3, background: 'rgba(255,255,255,0.15)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ width: `${progress}%`, height: '100%', background: PALETTE.accent,
+                transition: 'width 0.05s linear' }}/>
+            </div>
+          </div>
+        )}
+
+        {/* shutter */}
+        {stage === 'aim' && (
+          <div style={{
+            position: 'absolute', bottom: 36, left: 0, right: 0,
+            display: 'flex', justifyContent: 'center', zIndex: 5,
+          }}>
+            <button onClick={captureAndAnalyze} style={{
+              width: 76, height: 76, borderRadius: 38, border: '4px solid rgba(255,255,255,0.5)',
+              background: 'transparent', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ width: 60, height: 60, borderRadius: 30, background: '#fff' }}/>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* pantalla: sin API key */}
+      {stage === 'nokey' && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.92)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', padding: '32px 28px', zIndex: 20,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 28,
+            background: PALETTE.accentSoft, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', marginBottom: 16,
+          }}>
+            <Icon name="key" size={24} color={PALETTE.accent} sw={1.5}/>
+          </div>
+          <div style={{ fontSize: 18, color: PALETTE.text, fontWeight: 600, letterSpacing: -0.3,
+            marginBottom: 8, textAlign: 'center' }}>API Key de Anthropic</div>
+          <div style={{ fontSize: 13, color: PALETTE.text3, fontWeight: 300, textAlign: 'center',
+            marginBottom: 24, lineHeight: 1.5 }}>
+            Necesitás una API key de Anthropic para analizar los alimentos con IA real.
+          </div>
+          {errorMsg ? <div style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12,
+            textAlign: 'center' }}>{errorMsg}</div> : null}
+          <input
+            type="text"
+            placeholder="sk-ant-..."
+            value={keyInput}
+            onChange={e => setKeyInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && saveKey()}
+            style={{
+              width: '100%', padding: '14px 16px', borderRadius: 14,
+              background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`,
+              color: PALETTE.text, fontSize: 13, fontFamily: 'monospace',
+              outline: 'none', marginBottom: 12, boxSizing: 'border-box',
+            }}
+          />
+          <button onClick={saveKey} style={{
+            width: '100%', padding: '14px', borderRadius: 14,
+            background: PALETTE.accent, color: PALETTE.on, border: 'none',
+            fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 10,
+          }}>Guardar y analizar</button>
+          <button onClick={() => { setErrorMsg(''); setStage('aim'); }} style={{
+            width: '100%', padding: '12px', borderRadius: 14,
+            background: 'transparent', color: PALETTE.text3, border: 'none',
+            fontSize: 13, cursor: 'pointer',
+          }}>Cancelar</button>
+        </div>
+      )}
+
+      {/* pantalla: error */}
+      {stage === 'error' && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.92)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', padding: '32px 28px', zIndex: 20,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 28,
+            background: 'rgba(255,107,107,0.15)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', marginBottom: 16,
+          }}>
+            <Icon name="alert-circle" size={24} color="#ff6b6b" sw={1.5}/>
+          </div>
+          <div style={{ fontSize: 18, color: PALETTE.text, fontWeight: 600, letterSpacing: -0.3,
+            marginBottom: 8 }}>Error en el análisis</div>
+          <div style={{ fontSize: 13, color: PALETTE.text3, textAlign: 'center',
+            marginBottom: 28, lineHeight: 1.5 }}>{errorMsg}</div>
+          <button onClick={() => setStage('aim')} style={{
+            width: '100%', padding: '14px', borderRadius: 14,
+            background: PALETTE.accent, color: PALETTE.on, border: 'none',
+            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+          }}>Reintentar</button>
+        </div>
+      )}
+
+      {/* result panel slide up */}
+      {stage === 'result' && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          background: PALETTE.bg, borderRadius: '24px 24px 0 0',
+          padding: '20px 22px 36px', maxHeight: '70%', overflowY: 'auto',
+          animation: 'slideUp 0.35s ease-out', boxShadow: '0 -20px 40px rgba(0,0,0,0.4)',
+        }}>
+          <style>{`@keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }`}</style>
+          <div style={{
+            width: 36, height: 4, borderRadius: 2, background: PALETTE.text4,
+            margin: '0 auto 18px',
+          }}/>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px', borderRadius: 8,
+            background: PALETTE.accentSoft, color: PALETTE.accent,
+            fontSize: 10.5, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase',
+            marginBottom: 10,
+          }}>
+            <Icon name="check2" size={12} sw={2.5}/>
+            Detectado
+          </div>
+          <div style={{ fontSize: 22, color: PALETTE.text, fontWeight: 600, letterSpacing: -0.5,
+            marginBottom: 16 }}>
+            {total.kcal} kcal · {detected.length} {detected.length === 1 ? 'alimento' : 'alimentos'}
+          </div>
+
+          <div style={{ ...cardCss, padding: 0, marginBottom: 14 }}>
+            {detected.map((d, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 12,
+                borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, color: PALETTE.text, fontWeight: 500 }}>{d.n}</div>
+                  <div style={{ fontSize: 11.5, color: PALETTE.text3, marginTop: 2, display: 'flex', gap: 8 }}>
+                    <span>{d.g}</span>
+                    <span>P {d.p}g</span>
+                    <span>C {d.c}g</span>
+                    <span>G {d.gr}g</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 14, color: PALETTE.accent, fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums' }}>{d.kcal}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* totals */}
+          <div style={{ ...cardCss, padding: 16, marginBottom: 14, background: PALETTE.accentSoft,
+            border: `0.5px solid ${PALETTE.accentDim}` }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {[
+                ['Kcal', total.kcal], ['Prot', `${total.p}g`],
+                ['Carbo', `${total.c}g`], ['Grasa', `${total.g}g`],
+              ].map(([l, v]) => (
+                <div key={l}>
+                  <div style={{ fontSize: 9.5, color: PALETTE.text3, fontWeight: 600,
+                    letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{l}</div>
+                  <div style={{ fontSize: 18, color: PALETTE.text, fontWeight: 600,
+                    letterSpacing: -0.3, fontVariantNumeric: 'tabular-nums' }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onBack} style={{
+              flex: 1, padding: '14px', borderRadius: 16,
+              background: PALETTE.surfaceStrong, color: PALETTE.text, border: `0.5px solid ${PALETTE.border}`,
+              fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            }}>Editar</button>
+            <button onClick={onBack} style={{
+              flex: 2, padding: '14px', borderRadius: 16,
+              background: PALETTE.accent, color: PALETTE.on, border: 'none',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            }}>Sumar al día</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BoundingBox({ top, left, right, w, h, label, delay }) {
+  return (
+    <div style={{
+      position: 'absolute', top, left, right,
+      width: w, height: h, borderRadius: 6,
+      border: `1.5px solid ${PALETTE.accent}`,
+      boxShadow: `0 0 16px ${PALETTE.accentDim}`,
+      animation: `boxIn 0.3s ease-out ${delay}ms both`,
+      pointerEvents: 'none',
+    }}>
+      <style>{`@keyframes boxIn { from { opacity: 0; transform: scale(0.85) } to { opacity: 1; transform: scale(1) } }`}</style>
+      <div style={{
+        position: 'absolute', top: -22, left: 0,
+        background: PALETTE.accent, color: PALETTE.on,
+        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+        letterSpacing: 0.4,
+      }}>{label}</div>
+    </div>
+  );
+}
+
+// ─── Calculadora de macros ───
+function CalculadoraMacros({ onBack }) {
+  const [peso, setPeso] = React.useState(82);
+  const [altura, setAltura] = React.useState(178);
+  const [edad, setEdad] = React.useState(31);
+  const [obj, setObj] = React.useState('mantenimiento');
+
+  // Mifflin-St Jeor
+  const tmb = 10 * peso + 6.25 * altura - 5 * edad + 5;
+  const tdee = Math.round(tmb * 1.55);
+  const ajuste = obj === 'definicion' ? -400 : obj === 'volumen' ? +300 : 0;
+  const cal = tdee + ajuste;
+  const prot = Math.round(peso * 2.2);
+  const grasa = Math.round((cal * 0.25) / 9);
+  const carb = Math.round((cal - prot * 4 - grasa * 9) / 4);
+
+  return (
+    <div style={{ paddingTop: 8, paddingBottom: 130 }}>
+      <div style={{ padding: '8px 22px 12px' }}>
+        <button onClick={onBack} style={{
+          background: 'none', border: 'none', color: PALETTE.text2, cursor: 'pointer',
+          fontSize: 13, padding: 0, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          <Icon name="chev" size={14} sw={2} color={PALETTE.text2} style={{ transform: 'rotate(180deg)' }}/>
+          Atrás
+        </button>
+      </div>
+      <ScreenHeader title="Calculadora" sub="Tu objetivo de macros del día"/>
+
+      <div style={{ padding: '0 16px' }}>
+        <div style={{ ...cardCss, marginBottom: 14, padding: 0 }}>
+          {[['Peso (kg)', peso, setPeso, 50, 130], ['Altura (cm)', altura, setAltura, 140, 220], ['Edad', edad, setEdad, 16, 80]].map(([l, v, set, min, max], i) => (
+            <div key={l} style={{
+              display: 'flex', alignItems: 'center', padding: '14px 18px', gap: 12,
+              borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+            }}>
+              <div style={{ flex: 1, fontSize: 14, color: PALETTE.text, fontWeight: 500 }}>{l}</div>
+              <button onClick={() => set(Math.max(min, v - 1))} style={{
+                width: 28, height: 28, borderRadius: 14, background: PALETTE.surfaceStrong,
+                border: 'none', color: PALETTE.text, cursor: 'pointer', fontSize: 16,
+              }}>−</button>
+              <div style={{ minWidth: 40, textAlign: 'center', fontSize: 16, fontWeight: 600,
+                color: PALETTE.text, fontVariantNumeric: 'tabular-nums' }}>{v}</div>
+              <button onClick={() => set(Math.min(max, v + 1))} style={{
+                width: 28, height: 28, borderRadius: 14, background: PALETTE.surfaceStrong,
+                border: 'none', color: PALETTE.text, cursor: 'pointer', fontSize: 16,
+              }}>+</button>
+            </div>
+          ))}
+        </div>
+
+        <SectionLabel>Objetivo</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
+          {[['definicion', 'Definición'], ['mantenimiento', 'Manten.'], ['volumen', 'Volumen']].map(([id, n]) => (
+            <button key={id} onClick={() => setObj(id)} style={{
+              padding: '12px 8px', borderRadius: 14,
+              background: obj === id ? PALETTE.accent : PALETTE.surface,
+              color: obj === id ? PALETTE.on : PALETTE.text2,
+              border: obj === id ? 'none' : `0.5px solid ${PALETTE.border}`,
+              fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+            }}>{n}</button>
+          ))}
+        </div>
+
+        <SectionLabel>Tu objetivo diario</SectionLabel>
+        <div style={{ ...cardCss, padding: 22, background: PALETTE.accentSoft,
+          border: `0.5px solid ${PALETTE.accentDim}` }}>
+          <div style={{ fontSize: 11, color: PALETTE.accent, marginBottom: 6,
+            fontWeight: 600, letterSpacing: 1.4, textTransform: 'uppercase' }}>Calorías</div>
+          <div style={{ fontSize: 42, fontWeight: 600, letterSpacing: -1.2, color: PALETTE.text,
+            fontVariantNumeric: 'tabular-nums', lineHeight: 1, marginBottom: 16 }}>{cal} <span style={{
+              fontSize: 16, color: PALETTE.text3 }}>kcal</span></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {[['Prot', prot], ['Carbos', carb], ['Grasas', grasa]].map(([l, v]) => (
+              <div key={l} style={{ background: PALETTE.surface, padding: 12, borderRadius: 12 }}>
+                <div style={{ fontSize: 10, color: PALETTE.text3, fontWeight: 600,
+                  letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{l}</div>
+                <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: -0.4,
+                  color: PALETTE.text, fontVariantNumeric: 'tabular-nums' }}>{v}<span style={{
+                    fontSize: 11, color: PALETTE.text3 }}>g</span></div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 14, fontSize: 12, color: PALETTE.text2, lineHeight: 1.5 }}>
+            TDEE estimado: <strong style={{ color: PALETTE.text }}>{tdee} kcal</strong> · Mifflin-St Jeor con factor 1.55 (activo)
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.NutricionScreen = NutricionScreen;
+
+// app.jsx — Núcleo: shell, navegación y tweaks
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "denso": false,
+  "homeStyle": "voz-protagonista"
+}/*EDITMODE-END*/;
+
+// Tab bar minimalista — sin botón central (la voz vive en la Dynamic Island)
+function TabBar({ tab, setTab, isMobile }) {
+  const items = [
+    { id: 'hoy', n: 'Hoy', icon: 'home' },
+    { id: 'agenda', n: 'Agenda', icon: 'cal' },
+    { id: 'finanzas', n: 'Dinero', icon: 'money' },
+    { id: 'nutricion', n: 'Nutri', icon: 'apple' },
+    { id: 'tareas', n: 'Más', icon: 'note' },
+  ];
+
+  return (
+    <div style={{
+      position: isMobile ? 'fixed' : 'absolute',
+      bottom: 0, left: 0, right: 0,
+      paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom, 16px) + 10px)' : 28,
+      paddingTop: 14, paddingLeft: 14, paddingRight: 14,
+      background: 'linear-gradient(to top, #000 70%, rgba(0,0,0,0))',
+      zIndex: 30,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+        background: 'rgba(255,255,255,0.025)',
+        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        border: `0.5px solid ${PALETTE.border}`, borderRadius: 28, padding: '6px 4px',
+        height: 56,
+      }}>
+        {items.map(t => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              flex: 1, background: 'transparent', border: 'none', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              padding: '4px 8px', color: active ? PALETTE.text : PALETTE.text3,
+            }}>
+              <Icon name={t.icon} size={19} sw={active ? 1.6 : 1.2}/>
+              <div style={{ fontSize: 9, fontWeight: 300, letterSpacing: 0.6,
+                textTransform: 'uppercase' }}>{t.n}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Toast — feedback de "guardado en X"
+// ─────────────────────────────────────────────────────────
+function Toast({ example, onDone }) {
+  React.useEffect(() => {
+    const id = setTimeout(onDone, 3200);
+    return () => clearTimeout(id);
+  }, []);
+  return (
+    <div style={{
+      position: 'absolute', top: 58, left: 16, right: 16,
+      background: 'rgba(0,0,0,0.92)',
+      backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+      border: `0.5px solid ${PALETTE.borderStrong}`,
+      borderRadius: 18, padding: '12px 14px',
+      display: 'flex', gap: 12, alignItems: 'center', zIndex: 90,
+      animation: 'toastIn 0.35s cubic-bezier(.4,.0,.2,1)',
+      boxShadow: '0 0 30px rgba(255,255,255,0.08), 0 8px 24px rgba(0,0,0,0.6)',
+    }}>
+      <style>{`@keyframes toastIn { from { transform: translateY(-30px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }`}</style>
+      <div style={{
+        width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+        background: 'transparent', color: PALETTE.text,
+        border: `0.5px solid ${PALETTE.borderStrong}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon name="check2" size={14} sw={1.4}/>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, color: PALETTE.text, fontWeight: 400, letterSpacing: -0.05 }}>
+          Guardado en {example.destino}
+        </div>
+        <div style={{ fontSize: 11, color: PALETTE.text3, marginTop: 2, fontWeight: 300, fontStyle: 'italic' }}>
+          {example.coach}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// App raíz
+// ─────────────────────────────────────────────────────────
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+const SLIDES = [
+  { key: 'hoy',       label: 'Hoy' },
+  { key: 'agenda',    label: 'Agenda' },
+  { key: 'finanzas',  label: 'Dinero' },
+  { key: 'nutricion', label: 'Nutri' },
+  { key: 'habitos',   label: 'Hábitos' },
+  { key: 'notas',     label: 'Notas' },
+  { key: 'metas',     label: 'Metas' },
+  { key: 'diario',    label: 'Diario' },
+  { key: 'tareas',    label: 'Tareas' },
+];
+const SLIDE_IDX = Object.fromEntries(SLIDES.map((s, i) => [s.key, i]));
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [tab, setTab] = React.useState('hoy');
+  const [welcome, setWelcome] = React.useState(true);
+  const [voiceOpen, setVoiceOpen] = React.useState(false);
+  const [toast, setToast] = React.useState(null);
+  const [slideIdx, setSlideIdx] = React.useState(0);
+  const carouselRef = React.useRef(null);
+
+  const openVoice = () => { setVoiceOpen(true); };
+  const closeVoice = () => { setVoiceOpen(false); setWelcome(false); };
+  const onSaved = (example) => { setVoiceOpen(false); setWelcome(false); setToast(example); };
+  const skipWelcome = () => setWelcome(false);
+  const showWelcomeAgain = () => setWelcome(true);
+
+  const goToSlide = React.useCallback((idx) => {
+    setSlideIdx(idx);
+    if (carouselRef.current) {
+      carouselRef.current.scrollTo({ left: idx * carouselRef.current.offsetWidth, behavior: 'smooth' });
+    }
+  }, []);
+
+  const onCarouselScroll = React.useCallback(() => {
+    if (!carouselRef.current) return;
+    const idx = Math.round(carouselRef.current.scrollLeft / carouselRef.current.offsetWidth);
+    setSlideIdx(idx);
+  }, []);
+
+  const goTabMobile = React.useCallback((key) => {
+    const i = SLIDE_IDX[key];
+    if (i !== undefined) goToSlide(i);
+  }, [goToSlide]);
+
+  // screens for desktop
+  const screens = {
+    hoy: <HoyScreen onVoice={openVoice} goTab={setTab}/>,
+    agenda: <AgendaScreen/>,
+    tareas: <TareasScreen/>,
+    finanzas: <FinanzasScreen/>,
+    nutricion: <NutricionScreen/>,
+    habitos: <HabitosScreen/>,
+    notas: <NotasScreen/>,
+    metas: <MetasScreen/>,
+    diario: <DiarioScreen/>,
+    'voz-log': <NotasScreen/>,
+  };
+
+  // ── MOBILE: carrusel horizontal ──────────────────────────
+  if (isMobile) {
+    const FONT = { fontFamily: '-apple-system, "SF Pro Display", "Inter", system-ui, sans-serif', fontFeatureSettings: '"ss01","cv11"' };
+    const topPad = 'calc(env(safe-area-inset-top, 44px) + 58px)';
+    const botPad = 'calc(env(safe-area-inset-bottom, 16px) + 52px)';
+
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: PALETTE.bg, color: PALETTE.text, ...FONT }}>
+
+        {/* DynamicIsland — fuera del scroll, no se mueve */}
+        {!welcome && !voiceOpen && (
+          <DynamicIsland onVoice={openVoice} listening={false} isMobile={true}/>
+        )}
+
+        {/* Carrusel horizontal */}
+        <div
+          ref={carouselRef}
+          onScroll={onCarouselScroll}
+          style={{
+            position: 'absolute', inset: 0,
+            overflowX: 'scroll', overflowY: 'hidden',
+            display: 'flex',
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
+          {SLIDES.map((slide) => {
+            // render the screen for this slide
+            let content;
+            if (slide.key === 'hoy')       content = <HoyScreen onVoice={openVoice} goTab={goTabMobile}/>;
+            else if (slide.key === 'agenda')    content = <AgendaScreen/>;
+            else if (slide.key === 'finanzas')  content = <FinanzasScreen/>;
+            else if (slide.key === 'nutricion') content = <NutricionScreen/>;
+            else if (slide.key === 'habitos')   content = <HabitosScreen/>;
+            else if (slide.key === 'notas')     content = <NotasScreen/>;
+            else if (slide.key === 'metas')     content = <MetasScreen/>;
+            else if (slide.key === 'diario')    content = <DiarioScreen/>;
+            else if (slide.key === 'tareas')    content = <TareasScreen/>;
+
+            return (
+              <div
+                key={slide.key}
+                style={{
+                  minWidth: '100%',
+                  height: '100%',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  scrollSnapAlign: 'start',
+                  paddingTop: topPad,
+                  paddingBottom: botPad,
+                  boxSizing: 'border-box',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {content}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Indicador de sección — etiqueta + puntos */}
+        {!welcome && (
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            paddingBottom: 'env(safe-area-inset-bottom, 8px)',
+            paddingTop: 10,
+            background: 'linear-gradient(transparent, rgba(0,0,0,0.85) 40%)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+            zIndex: 60, pointerEvents: 'none',
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>
+              {SLIDES[slideIdx]?.label}
+            </div>
+            <div style={{ display: 'flex', gap: 5, pointerEvents: 'auto', paddingBottom: 6 }}>
+              {SLIDES.map((s, i) => (
+                <div
+                  key={s.key}
+                  onClick={() => goToSlide(i)}
+                  style={{
+                    width: i === slideIdx ? 18 : 5,
+                    height: 5,
+                    borderRadius: 3,
+                    background: i === slideIdx ? '#fff' : 'rgba(255,255,255,0.28)',
+                    transition: 'all 0.25s ease',
+                    cursor: 'pointer',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Overlays — fuera del carrusel */}
+        {toast && <Toast example={toast} onDone={() => setToast(null)}/>}
+        {welcome && <WelcomeScreen onVoice={openVoice} onSkip={skipWelcome}/>}
+        {voiceOpen && <VoiceModal onClose={closeVoice} onSaved={onSaved}/>}
+      </div>
+    );
+  }
+
+  // ── DESKTOP: simulador iOS ───────────────────────────────
+  const inner = (
+    <div style={{
+      height: '100%', overflowY: 'auto', overflowX: 'hidden',
+      background: PALETTE.bg, color: PALETTE.text,
+      fontFamily: '-apple-system, "SF Pro Display", "Inter", system-ui, sans-serif',
+      fontFeatureSettings: '"ss01", "cv11"',
+      position: 'relative',
+    }}>
+      <div style={{ height: 54 }}/>
+      {screens[tab] || screens.hoy}
+      {toast && <Toast example={toast} onDone={() => setToast(null)}/>}
+      {welcome && <WelcomeScreen onVoice={openVoice} onSkip={skipWelcome}/>}
+      {!welcome && !voiceOpen && <DynamicIsland onVoice={openVoice} listening={false} isMobile={false}/>}
+      {voiceOpen && <VoiceModal onClose={closeVoice} onSaved={onSaved}/>}
+      {!welcome && <TabBar tab={tab} setTab={setTab} isMobile={false}/>}
+    </div>
+  );
+
+  return (
+    <>
+      <IOSDevice dark>
+        {inner}
+      </IOSDevice>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Probar asistente">
+          <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.55)', marginBottom: 8, lineHeight: 1.5 }}>
+            Cada apertura muestra un ejemplo distinto.
+          </div>
+          <TweakButton onClick={openVoice}>Abrir asistente de voz</TweakButton>
+          <TweakButton onClick={showWelcomeAgain}>Ver pantalla de bienvenida</TweakButton>
+        </TweakSection>
+        <TweakSection title="Ir a módulo">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <TweakButton onClick={() => setTab('hoy')}>Hoy</TweakButton>
+            <TweakButton onClick={() => setTab('agenda')}>Agenda</TweakButton>
+            <TweakButton onClick={() => setTab('tareas')}>Tareas</TweakButton>
+            <TweakButton onClick={() => setTab('finanzas')}>Finanzas</TweakButton>
+            <TweakButton onClick={() => setTab('nutricion')}>Nutrición</TweakButton>
+            <TweakButton onClick={() => setTab('habitos')}>Hábitos</TweakButton>
+            <TweakButton onClick={() => setTab('notas')}>Notas</TweakButton>
+            <TweakButton onClick={() => setTab('metas')}>Metas</TweakButton>
+            <TweakButton onClick={() => setTab('diario')}>Diario</TweakButton>
+          </div>
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
