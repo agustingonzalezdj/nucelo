@@ -2828,10 +2828,18 @@ function CamaraNutricion({ onBack }) {
   const canvasRef = React.useRef(null);
 
   React.useEffect(() => {
-    navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'environment' } })
+    navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
       .then(stream => {
         streamRef.current = stream;
-        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+        const v = videoRef.current;
+        if (v) {
+          v.srcObject = stream;
+          v.setAttribute('playsinline', '');
+          v.setAttribute('webkit-playsinline', '');
+          v.muted = true;
+          const p = v.play();
+          if (p && p.catch) p.catch(() => {});
+        }
       })
       .catch(() => setCamError(true));
     return () => { if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop()); };
