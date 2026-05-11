@@ -1,4 +1,4 @@
-const CACHE = 'nucleo-v6';
+const CACHE = 'nucleo-v8';
 const ASSETS = [
   'nucleo.html',
   'https://unpkg.com/react@18/umd/react.production.min.js',

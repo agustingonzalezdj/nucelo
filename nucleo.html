@@ -1081,7 +1081,20 @@ function loadLS(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
 }
 function saveLS(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+    window.dispatchEvent(new CustomEvent('nucleo-ls', { detail: { key } }));
+  } catch {}
+}
+
+function useLS(key, fallback) {
+  const [val, setVal] = React.useState(() => loadLS(key, fallback));
+  React.useEffect(() => {
+    const handler = (e) => { if (e.detail.key === key) setVal(loadLS(key, fallback)); };
+    window.addEventListener('nucleo-ls', handler);
+    return () => window.removeEventListener('nucleo-ls', handler);
+  }, [key]);
+  return val;
 }
 
 const DATA = {
@@ -1178,13 +1191,24 @@ function categorizarTranscript(text) {
   }
   // Gasto
   if (/gast[eé]|compr[eé]|pagu[eé]|cost[oó]|salió|desembolsé/.test(t)) {
-    const monto = (t.match(/\$?\s*(\d[\d.,]+)\s*(mil|pesos|k\b)?/) || [])[0];
-    const cats = { super: 'Comida', combustible: 'Combustible', nafta: 'Combustible',
-      café: 'Cafés', farmacia: 'Salud', ropa: 'Ropa', comida: 'Comida' };
+    const montoMatch = t.match(/\$?\s*(\d[\d.,]+)\s*(mil|k\b)?/);
+    let monto = 0;
+    if (montoMatch) {
+      monto = parseFloat(montoMatch[1].replace(/\./g, '').replace(',', '.'));
+      if (/mil|k\b/.test(montoMatch[2] || '')) monto *= 1000;
+    }
+    const cats = { super: 'Comida', supermercado: 'Comida', combustible: 'Combustible',
+      nafta: 'Combustible', café: 'Cafés', farmacia: 'Salud', ropa: 'Ropa', comida: 'Comida' };
     const cat = Object.entries(cats).find(([k]) => t.includes(k))?.[1] || 'Variable';
+    // Guardar en gastos variables
+    if (monto > 0) {
+      const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      const existing = loadLS('nucleo_gastos_var', []);
+      saveLS('nucleo_gastos_var', [{ c: text, cat, m: monto, fecha }, ...existing]);
+    }
     return { tipo: 'Gasto', icon: 'money', destino: `Gastos · ${cat}`,
-      extra: monto ? `${monto} · hoy` : 'Registrado hoy',
-      coach: 'Anotado. Vas dentro del mes.' };
+      extra: monto > 0 ? `−${fmt(monto)} · registrado` : 'Sin monto detectado',
+      coach: 'Anotado en tus gastos variables.' };
   }
   // Pago futuro / recordatorio de pago
   if (/pagar|vence|vencimiento|cuota|seguro|factura/.test(t)) {
@@ -2179,6 +2203,9 @@ function FinResumen() {
   const totalArs = p.arsBanco + p.arsEfectivo;
   const now = new Date();
   const mes = now.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  const gastosVar = useLS('nucleo_gastos_var', []);
+  const totalVar = gastosVar.reduce((s, g) => s + g.m, 0);
+  const totalFijosARS = DATA.gastosFijosARS.reduce((s, g) => s + g.m, 0);
 
   return (
     <div>
@@ -2195,6 +2222,29 @@ function FinResumen() {
         </div>
         <div style={{ fontSize: 14, color: PALETTE.text2 }}>
           + <span style={{ color: PALETTE.accent }}>US$ {p.usdEfectivo.toLocaleString()}</span> en efectivo
+        </div>
+      </div>
+
+      {/* Gastos del mes */}
+      <div style={{ padding: '0 16px 18px' }}>
+        <SectionLabel>Gastos del mes</SectionLabel>
+        <div style={{ ...cardCss, padding: 0 }}>
+          {[
+            { n: 'Fijos ARS', v: totalFijosARS, c: PALETTE.warn },
+            { n: 'Variables', v: totalVar, c: PALETTE.amber },
+            { n: 'Total', v: totalFijosARS + totalVar, c: PALETTE.text, bold: true },
+          ].map((row, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', padding: '13px 18px', gap: 12,
+              borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: row.c }}/>
+              <div style={{ flex: 1, fontSize: 14, color: PALETTE.text, fontWeight: row.bold ? 600 : 500 }}>{row.n}</div>
+              <div style={{ fontSize: 14, color: row.c, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                −{fmt(row.v)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
