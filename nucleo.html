@@ -1205,7 +1205,9 @@ function categorizarTranscript(text) {
   }
   // Gasto
   if (/gast[eé]|compr[eé]|pagu[eé]|cost[oó]|salió|desembolsé/.test(t)) {
-    const montoMatch = t.match(/\$?\s*(\d[\d.,]+)\s*(mil|k\b)?/);
+    // Normalizar espacios entre dígitos (dictado iOS: "46 000" → "46000")
+    const tNorm = t.replace(/(\d)\s+(\d)/g, '$1$2');
+    const montoMatch = tNorm.match(/\$?\s*(\d[\d.,]*)\s*(mil|k\b)?/);
     let monto = 0;
     if (montoMatch) {
       monto = parseFloat(montoMatch[1].replace(/\./g, '').replace(',', '.'));
@@ -1307,6 +1309,41 @@ function VoiceModal({ onClose, onSaved }) {
     if (!text.trim()) return;
     setStage('analyzing');
     setTimeout(() => {
+      const lineas = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      // Si hay múltiples líneas, procesar cada una como gasto separado
+      if (lineas.length > 1) {
+        const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+        const existing = loadLS('nucleo_gastos_var', []);
+        const nuevos = [];
+        let totalDescontado = { efectivo: 0, banco: 0 };
+        lineas.forEach(linea => {
+          const lt = linea.toLowerCase();
+          const lNorm = lt.replace(/(\d)\s+(\d)/g, '$1$2');
+          const montoMatch = lNorm.match(/\$?\s*(\d[\d.,]*)\s*(mil|k\b)?/);
+          if (!montoMatch) return;
+          let monto = parseFloat(montoMatch[1].replace(/\./g, '').replace(',', '.'));
+          if (/mil|k\b/.test(montoMatch[2] || '')) monto *= 1000;
+          if (!monto || monto <= 0) return;
+          const fuente = /banco|galicia|transfer|débito|debito|cuenta/.test(lt) ? 'banco' : 'efectivo';
+          const cats = { super: 'Comida', supermercado: 'Comida', combustible: 'Combustible', nafta: 'Combustible', café: 'Cafés', farmacia: 'Salud', ropa: 'Ropa', comida: 'Comida' };
+          const cat = Object.entries(cats).find(([k]) => lt.includes(k))?.[1] || 'Variable';
+          nuevos.push({ c: linea, cat, m: monto, fecha, fuente });
+          totalDescontado[fuente] += monto;
+        });
+        if (nuevos.length > 0) {
+          saveLS('nucleo_gastos_var', [...nuevos, ...existing]);
+          if (totalDescontado.efectivo > 0) descontarPatrimonio(totalDescontado.efectivo, 'efectivo');
+          if (totalDescontado.banco > 0) descontarPatrimonio(totalDescontado.banco, 'banco');
+        }
+        const total = nuevos.reduce((s, g) => s + g.m, 0);
+        setResult({ tipo: 'Gastos múltiples', icon: 'money',
+          destino: `${nuevos.length} gastos registrados`,
+          extra: total > 0 ? `−${fmt(total)} total` : '',
+          coach: `${nuevos.length} movimientos anotados.` });
+        setStage('done');
+        return;
+      }
+      // Una sola línea — lógica normal
       const r = categorizarTranscript(text.trim());
       setResult(r);
       setStage('done');
