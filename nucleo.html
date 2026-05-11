@@ -1195,100 +1195,142 @@ window.DATA = DATA;
 
 // voice.jsx — Asistente de voz monocromo (eclipse + waveform blanco)
 
-// ── Categorización inteligente de voz ───────────────────────────────────────
-function categorizarTranscript(text) {
-  const t = text.toLowerCase();
+// ── Intérprete nativo de lenguaje natural ──────────────────────────────────
+function interpretarMensaje(text) {
+  const t = text.toLowerCase().trim();
+  // Normalizar números: "46 000" → "46000", "46.000" → "46000"
+  const tN = t.replace(/(\d)\s+(\d)/g, '$1$2').replace(/(\d)\.(\d{3})(?!\d)/g, '$1$2');
 
-  // Ingreso DJ / cobro
-  if (/cobr[eé]|me pag[oó]|me deposit|ingres[oó]|me transfer/.test(t)) {
-    const monto = (t.match(/(\d[\d.,]+)\s*(mil|pesos|peso|k\b)?/) || [])[0];
-    return { tipo: 'Ingreso', icon: 'money', destino: 'Finanzas · Ingresos DJ',
-      extra: monto ? `+${monto} · hoy` : 'Registrado hoy',
-      coach: 'Bien. Una menos en pendientes.' };
+  // ─ Extraer monto del texto normalizado ─
+  function extraerMonto(s) {
+    const m = s.match(/\$?\s*(\d[\d]*(?:[.,]\d+)?)\s*(k\b|mil(?:es)?\b)?/);
+    if (!m) return 0;
+    let n = parseFloat(m[1].replace(',', '.')) || 0;
+    if (/k\b|mil/.test(m[2] || '')) n *= 1000;
+    return Math.round(n);
   }
-  // Gasto
-  if (/gast[eé]|compr[eé]|pagu[eé]|cost[oó]|salió|desembolsé/.test(t)) {
-    // Normalizar espacios entre dígitos (dictado iOS: "46 000" → "46000")
-    const tNorm = t.replace(/(\d)\s+(\d)/g, '$1$2');
-    const montoMatch = tNorm.match(/\$?\s*(\d[\d.,]*)\s*(mil|k\b)?/);
-    let monto = 0;
-    if (montoMatch) {
-      monto = parseFloat(montoMatch[1].replace(/\./g, '').replace(',', '.'));
-      if (/mil|k\b/.test(montoMatch[2] || '')) monto *= 1000;
+
+  // ─ Detectar billetera/fuente de pago ─
+  function detectarFuente(s) {
+    if (/mercado\s*pago|mercadopago|\bmp\b/.test(s)) return 'mercadopago';
+    if (/banco|galicia|d[eé]bito|debito|transfer(?:encia)?|cuenta corriente|tarjeta/.test(s)) return 'banco';
+    if (/efectivo|cash|en mano|físico|billete/.test(s)) return 'efectivo';
+    return null;
+  }
+
+  // ─ Detectar cuenta para actualización de saldo ─
+  function detectarCuenta(s) {
+    if (/mercado\s*pago|mercadopago|\bmp\b/.test(s)) return 'arsMercadoPago';
+    if (/banco|galicia|cuenta/.test(s)) return 'arsBanco';
+    if (/efectivo|cash|en mano|plata|billete/.test(s)) return 'arsEfectivo';
+    if (/d[oó]lar(?:es)?|usd|verde/.test(s)) return 'usdEfectivo';
+    return null;
+  }
+
+  // ─ Detectar categoría ─
+  function detectarCategoria(s) {
+    if (/nafta|combustible|ypf|shell|ax[iy]on|gasoil|gasolina/.test(s)) return 'Combustible';
+    if (/super(?:mercado)?|carrefour|\bdia\b|coto|jumbo|almac[eé]n|verdurer/.test(s)) return 'Comida';
+    if (/caf[eé]|restau(?:rante)?|comida|lunch|almuerzo|cena|mcdonald|burguer|pizza|delivery/.test(s)) return 'Comida';
+    if (/farmacia|medic(?:amento)?|salud|doctor|hospital|cl[ií]nica|turno/.test(s)) return 'Salud';
+    if (/ropa|zapatilla|indumentaria|adidas|nike|remera|pantalon/.test(s)) return 'Ropa';
+    if (/gym|gimnasio/.test(s)) return 'Salud';
+    if (/luz|gas|agua|internet|wifi|tel[eé]fono|celular|claro|personal|movistar/.test(s)) return 'Servicios';
+    if (/uber|cabify|taxi|remis|colectivo|sube/.test(s)) return 'Transporte';
+    return 'Variable';
+  }
+
+  // ══ 1. ACTUALIZAR SALDO ══
+  // "en banco galicia tengo 511917", "tengo 85000 en mp", "mercado pago: 30000", "mi saldo en efectivo es 200000"
+  const saldoPatterns = [
+    // "en X tengo N" o "X tiene N"
+    /(?:en\s+)?(banco(?:\s+galicia)?|galicia|efectivo|mercado\s*pago|\bmp\b|d[oó]lares?|usd)\s+(?:tengo|hay|tiene)\s+\$?([\d\s]+)/,
+    // "tengo N en X"
+    /tengo\s+\$?([\d\s]+)\s+(?:pesos?\s+)?(?:en\s+)?(banco(?:\s+galicia)?|galicia|efectivo|mercado\s*pago|\bmp\b|d[oó]lares?|usd)/,
+    // "saldo en X es N" / "mi X es N"
+    /(?:(?:mi\s+)?saldo\s+(?:en\s+)?|mi\s+)(banco(?:\s+galicia)?|galicia|efectivo|mercado\s*pago|\bmp\b)\s+(?:es|son|era|fue|:)\s+\$?([\d\s]+)/,
+    // "banco galicia: 511917" / "efectivo: 200000"
+    /^(banco(?:\s+galicia)?|galicia|efectivo|mercado\s*pago|\bmp\b|d[oó]lares?|usd)\s*[:\-=]\s*\$?([\d\s]+)/,
+  ];
+
+  for (let i = 0; i < saldoPatterns.length; i++) {
+    const m = tN.match(saldoPatterns[i]);
+    if (m) {
+      let cuentaStr, montoStr;
+      if (i === 1) { montoStr = m[1]; cuentaStr = m[2]; }
+      else { cuentaStr = m[1]; montoStr = m[2]; }
+      const campo = detectarCuenta(cuentaStr || '');
+      const monto = parseInt((montoStr || '').replace(/\s/g, ''), 10) || 0;
+      if (campo && monto > 0) {
+        const labels = { arsBanco: 'Banco Galicia', arsEfectivo: 'Efectivo', arsMercadoPago: 'Mercado Pago', usdEfectivo: 'USD efectivo' };
+        const esUSD = campo === 'usdEfectivo';
+        return { tipo: 'actualizar_saldo', campo, monto, moneda: esUSD ? 'USD' : 'ARS',
+          descripcion: `${labels[campo]}: ${esUSD ? 'US$' : '$'}${monto.toLocaleString('es-AR')}`,
+          coach: `Saldo de ${labels[campo]} actualizado.` };
+      }
     }
-    const cats = { super: 'Comida', supermercado: 'Comida', combustible: 'Combustible',
-      nafta: 'Combustible', café: 'Cafés', farmacia: 'Salud', ropa: 'Ropa', comida: 'Comida' };
-    const cat = Object.entries(cats).find(([k]) => t.includes(k))?.[1] || 'Variable';
-    // Detectar fuente de pago
-    const fuente = /banco|galicia|transfer|débito|debito|cuenta/.test(t) ? 'banco' : 'efectivo';
-    // Guardar en gastos variables y descontar del patrimonio
-    if (monto > 0) {
-      const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-      const existing = loadLS('nucleo_gastos_var', []);
-      saveLS('nucleo_gastos_var', [{ c: text, cat, m: monto, fecha, fuente }, ...existing]);
-      descontarPatrimonio(monto, fuente);
-    }
-    const fuenteLabel = fuente === 'banco' ? 'Banco Galicia' : 'Efectivo';
-    return { tipo: 'Gasto', icon: 'money', destino: `Gastos · ${cat}`,
-      extra: monto > 0 ? `−${fmt(monto)} de ${fuenteLabel}` : 'Sin monto detectado — agregalo manualmente',
-      coach: 'Anotado en tus gastos variables.' };
   }
-  // Pago futuro / recordatorio de pago
-  if (/pagar|vence|vencimiento|cuota|seguro|factura/.test(t)) {
-    return { tipo: 'Pago pendiente', icon: 'money', destino: 'Suscripciones · Próximos pagos',
-      extra: 'Recordatorio activado',
-      coach: 'Anotado. Te aviso un día antes.' };
+
+  // ══ 2. GASTO (restar del patrimonio) ══
+  // gasté / compré / pagué / costó / salió / aboné / desembolsé / le pagué
+  if (/gast[eé]|compr[eé]|pagu[eé]|cost[oó]|sali[oó]|abon[eé]|desembolsé|le\s+pagu[eé]|gastamos/.test(t)) {
+    const monto = extraerMonto(tN);
+    const fuente = detectarFuente(t);
+    const categoria = detectarCategoria(t);
+    return { tipo: 'gasto', monto, fuente, necesita_fuente: !fuente,
+      categoria, descripcion: text,
+      coach: monto > 0 ? 'Anotado y descontado.' : 'Guardado. Editá el monto si falta.' };
   }
-  // Agenda / horario
-  if (/ma[ñn]ana|lunes|martes|miércoles|jueves|viernes|sábado|domingo|a las|reunión|llamada|evento|boda|XV|cumpleaños/.test(t)) {
-    const hora = (t.match(/a las (\d{1,2}(?::\d{2})?)/i) || [])[1];
-    return { tipo: 'Agenda', icon: 'cal', destino: `Agenda · ${hora ? hora + 'hs' : 'próximo evento'}`,
-      extra: hora ? `Bloque programado a las ${hora}` : 'Agregado a la agenda',
-      coach: 'Listo. En la agenda.' };
+
+  // ══ 3. INGRESO (sumar al patrimonio) ══
+  if (/cobr[eé]|me\s+pag[oó]|me\s+deposit[oó]|ingres[oó]|me\s+transfer[ií]|entraron|me\s+cay[oó]|recib[ií]|gané/.test(t)) {
+    const monto = extraerMonto(tN);
+    const fuente = detectarFuente(t);
+    return { tipo: 'ingreso', monto, fuente, descripcion: text,
+      coach: monto > 0 ? `+${fmt(monto)} anotado.` : 'Ingreso registrado.' };
   }
-  // Gym / hábito físico
-  if (/gym|gimnasio|entrén[eé]|entreno|cardio|piernas|pecho|espalda|brazos|abdominales|corr[ií]/.test(t)) {
-    return { tipo: 'Hábito · Gym', icon: 'dumbbell', destino: 'Hábitos · Gym',
-      extra: 'Suma a tu racha · hoy',
-      coach: 'Modo bestia activado. Racha suma.' };
+
+  // ══ 4. TAREA ══
+  // "tengo que" con verbo, "hay que", "recordar", "no olvidar"
+  if (/tengo\s+que\s+\w|hay\s+que|debo\s+\w|recordar(?:\s+de)?|no\s+olvidar|pendiente\s+\w|llamar\s+(?:al?|a\s+\w)|enviar|mandar|confirmar|hablar\s+con/.test(t)) {
+    return { tipo: 'tarea', descripcion: text, coach: 'Tarea agregada. Una menos en la cabeza.' };
   }
-  // Nutrición / comida
-  if (/com[ií]|desayu[né]|almorzc[eé]|cen[eé]|kcal|proteína|calorías|macro/.test(t)) {
-    return { tipo: 'Nutrición', icon: 'apple', destino: 'Nutrición · Comidas del día',
-      extra: 'Sumado al registro · calculá macros con foto',
-      coach: 'Sumado al día. Vas firme.' };
+
+  // ══ 5. AGENDA / EVENTO ══
+  if (/ma[ñn]ana|pasado\s+ma[ñn]ana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|a\s+las\s+\d|boda|evento|reuni[oó]n|XV\s+a[ñn]os|cumplea[ñn]os|turno/.test(t)) {
+    const hora = (t.match(/a\s+las\s+(\d{1,2}(?::\d{2})?)/) || [])[1];
+    return { tipo: 'agenda', descripcion: text,
+      coach: hora ? `Agendado a las ${hora}hs.` : 'Anotado en la agenda.' };
   }
-  // Nota / idea
-  if (/idea|anotar|anoto|nota|reel|contenido|publicar|post|story|video|set|tracklist|mix/.test(t)) {
-    const tags = [];
-    if (/reel|contenido|story|post|video/.test(t)) tags.push('Contenido');
-    if (/set|tracklist|mix|dj|música/.test(t)) tags.push('DJ');
-    return { tipo: 'Idea · Nota', icon: 'note', destino: `Notas · ${tags[0] || 'General'}`,
-      extra: `Tag: ${tags.join(', ') || 'Sin etiqueta'}`,
-      coach: 'Buena. La sumo a tu pila.' };
+
+  // ══ 6. GYM / HÁBITO ══
+  if (/gym|gimnasio|entr[eé]n[eé]|entren[oó]|cardio|piernas|pecho|espalda|bíceps|tríceps|corr[ií]|running|caminé/.test(t)) {
+    return { tipo: 'habito', descripcion: text, coach: 'Racha suma. Modo bestia.' };
   }
-  // Tarea genérica
-  if (/tengo que|hay que|recordar|pendiente|hacer|llamar|enviar|mandar|confirmar/.test(t)) {
-    return { tipo: 'Tarea', icon: 'check', destino: 'Tareas · Pendientes',
-      extra: 'Prioridad media · hoy',
-      coach: 'Listo. Una menos en la cabeza.' };
+
+  // ══ 7. NUTRICIÓN ══
+  if (/com[ií]\s|desayu[né]|almorzc[eé]|almorcé|cen[eé]|kcal|calorías|macros?|proteína/.test(t)) {
+    return { tipo: 'nutricion', descripcion: text, coach: 'Registrado. Vas bien.' };
   }
-  // Meta / objetivo
-  if (/meta|objetivo|quiero|lograr|llegar|bajar|subir|ahorrar/.test(t)) {
-    return { tipo: 'Meta', icon: 'target', destino: 'Metas · Activas',
-      extra: 'Registrada',
-      coach: 'Meta anotada. Foco.' };
+
+  // ══ 8. IDEA / NOTA ══
+  if (/idea\s|anotar|anoto\s|nota[:\s]|reel|contenido|publicar|post|story|video|set\s|tracklist|mix\s|dj\s/.test(t)) {
+    const tag = /reel|story|post|video|contenido/.test(t) ? 'Contenido' : /set|tracklist|mix|dj/.test(t) ? 'DJ' : 'General';
+    return { tipo: 'nota', descripcion: text, tag, coach: 'Guardado en notas.' };
   }
-  // Diario / reflexión
-  if (/hoy fue|me siento|estoy|me alegra|me preocupa|reflexión|diario/.test(t)) {
-    return { tipo: 'Diario', icon: 'journal', destino: 'Diario · Entrada de hoy',
-      extra: 'Guardado en tu diario',
-      coach: 'Escrito. El día queda.' };
+
+  // ══ 9. META ══
+  if (/(?:mi\s+)?meta\s|objetivo[:\s]|quiero\s+(?:ahorrar|llegar|lograr|bajar|subir)|ahorrar\s+\$/.test(t)) {
+    return { tipo: 'meta', descripcion: text, coach: 'Meta anotada. Foco.' };
   }
-  // Fallback
-  return { tipo: 'Captura', icon: 'sparkle', destino: 'Notas · General',
-    extra: 'Categorizalo vos después',
-    coach: 'Guardado. Nada se pierde.' };
+
+  // ══ 10. DIARIO ══
+  if (/hoy\s+(?:fue|estuvo)|me\s+(?:siento|alegra|preocupa)|(?:estoy|estuve)\s+\w+ando|reflexi[oó]n|diario[:\s]/.test(t)) {
+    return { tipo: 'diario', descripcion: text, coach: 'Guardado en tu diario.' };
+  }
+
+  // ══ Fallback ══
+  return { tipo: 'captura', descripcion: text, coach: 'Guardado. Nada se pierde.' };
 }
 
 function VoiceModal({ onClose, onSaved }) {
@@ -1331,152 +1373,137 @@ function VoiceModal({ onClose, onSaved }) {
 
   const aplicarAccion = (json, textCompleto) => {
     const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-    const fuenteLabel = (f) => f === 'banco' ? 'Banco Galicia' : f === 'mercadopago' ? 'Mercado Pago' : 'Efectivo';
+    const fLabel = (f) => f === 'banco' ? 'Banco Galicia' : f === 'mercadopago' ? 'Mercado Pago' : 'Efectivo';
 
-    if (json.tipo === 'actualizar_saldo' && json.campo && json.monto != null) {
+    // ─ Actualizar saldo directo ─
+    if (json.tipo === 'actualizar_saldo' && json.campo && json.monto > 0) {
       const p = getPatrimonio();
       p[json.campo] = json.monto;
       setPatrimonio(p);
-      const labels = { arsBanco: 'Banco Galicia', arsEfectivo: 'Efectivo', arsMercadoPago: 'Mercado Pago', usdEfectivo: 'USD efectivo' };
+      const lbl = { arsBanco: 'Banco Galicia', arsEfectivo: 'Efectivo', arsMercadoPago: 'Mercado Pago', usdEfectivo: 'USD efectivo' };
       setResult({ tipo: 'Saldo actualizado', icon: 'money',
-        destino: `Finanzas · ${labels[json.campo] || json.campo}`,
-        extra: `Nuevo saldo: ${json.moneda === 'USD' ? 'US$' : '$'}${json.monto.toLocaleString('es-AR')}`,
-        coach: json.coach || 'Saldo actualizado.' });
-      setStage('done');
-      return;
+        destino: `Finanzas · ${lbl[json.campo]}`,
+        extra: `${json.moneda === 'USD' ? 'US$' : '$'}${json.monto.toLocaleString('es-AR')}`,
+        coach: json.coach });
+      setStage('done'); return;
     }
 
-    if (json.tipo === 'gasto' && json.monto > 0) {
-      if (!json.necesita_fuente && json.fuente) {
-        // Fuente conocida → guardar directo
+    // ─ Gasto ─
+    if (json.tipo === 'gasto') {
+      if (json.monto > 0 && json.fuente) {
         const existing = loadLS('nucleo_gastos_var', []);
         saveLS('nucleo_gastos_var', [{ c: textCompleto, cat: json.categoria || 'Variable', m: json.monto, fecha, fuente: json.fuente }, ...existing]);
         descontarPatrimonio(json.monto, json.fuente);
-        setResult({ tipo: 'Gasto', icon: 'money',
-          destino: `Gastos · ${json.categoria || 'Variable'}`,
-          extra: `−${fmt(json.monto)} de ${fuenteLabel(json.fuente)}`,
-          coach: json.coach || 'Anotado y descontado.' });
+        setResult({ tipo: 'Gasto', icon: 'money', destino: `Gastos · ${json.categoria || 'Variable'}`,
+          extra: `−${fmt(json.monto)} de ${fLabel(json.fuente)}`, coach: json.coach });
         setStage('done');
-      } else {
-        // Preguntar fuente
+      } else if (json.monto > 0) {
         setGastosPendientes({ items: [{ c: textCompleto, cat: json.categoria || 'Variable', m: json.monto }], total: json.monto });
+        setStage('fuente');
+      } else {
+        // Sin monto → pedir fuente de todas formas con monto 0 editable luego
+        setGastosPendientes({ items: [{ c: textCompleto, cat: 'Variable', m: 0 }], total: 0 });
         setStage('fuente');
       }
       return;
     }
 
-    if (json.tipo === 'ingreso' && json.monto > 0) {
-      setResult({ tipo: 'Ingreso', icon: 'money',
-        destino: 'Finanzas · Ingresos',
-        extra: `+${fmt(json.monto)} · ${fecha}`,
-        coach: json.coach || 'Ingreso anotado.' });
-      setStage('done');
+    // ─ Ingreso → sumar al patrimonio ─
+    if (json.tipo === 'ingreso') {
+      if (json.monto > 0) {
+        if (json.fuente) {
+          const p = getPatrimonio();
+          if (json.fuente === 'efectivo') p.arsEfectivo += json.monto;
+          if (json.fuente === 'banco') p.arsBanco += json.monto;
+          if (json.fuente === 'mercadopago') p.arsMercadoPago = (p.arsMercadoPago || 0) + json.monto;
+          setPatrimonio(p);
+          setResult({ tipo: 'Ingreso', icon: 'money', destino: `Finanzas · ${fLabel(json.fuente)}`,
+            extra: `+${fmt(json.monto)} en ${fLabel(json.fuente)}`, coach: json.coach });
+          setStage('done');
+        } else {
+          // Preguntar dónde entró la plata
+          setGastosPendientes({ items: [{ c: textCompleto, cat: 'Ingreso', m: json.monto }], total: json.monto, esIngreso: true });
+          setStage('fuente');
+        }
+      } else {
+        setResult({ tipo: 'Ingreso', icon: 'money', destino: 'Finanzas · Ingresos', extra: textCompleto, coach: json.coach });
+        setStage('done');
+      }
       return;
     }
 
-    if (json.tipo === 'tarea' && json.descripcion) {
+    // ─ Tarea ─
+    if (json.tipo === 'tarea') {
       const tareas = loadLS('nucleo_tareas', []);
-      saveLS('nucleo_tareas', [...tareas, { id: Date.now(), t: json.descripcion, done: false, cuando: 'Hoy' }]);
+      saveLS('nucleo_tareas', [...tareas, { id: Date.now(), t: json.descripcion || textCompleto, done: false, cuando: 'Hoy' }]);
       setResult({ tipo: 'Tarea', icon: 'check', destino: 'Tareas · Pendientes',
-        extra: json.descripcion, coach: json.coach || 'Agregado a tareas.' });
-      setStage('done');
-      return;
+        extra: json.descripcion || textCompleto, coach: json.coach });
+      setStage('done'); return;
     }
 
-    if (json.tipo === 'nota' && json.descripcion) {
+    // ─ Nota / idea ─
+    if (json.tipo === 'nota') {
       const notas = loadLS('nucleo_notas', []);
-      saveLS('nucleo_notas', [{ t: json.descripcion, cuerpo: textCompleto, tag: 'General', fecha }, ...notas]);
-      setResult({ tipo: 'Nota', icon: 'note', destino: 'Notas · General',
-        extra: json.descripcion, coach: json.coach || 'Guardado en notas.' });
-      setStage('done');
-      return;
+      saveLS('nucleo_notas', [{ t: json.descripcion || textCompleto, cuerpo: textCompleto, tag: json.tag || 'General', fecha }, ...notas]);
+      setResult({ tipo: 'Nota', icon: 'note', destino: `Notas · ${json.tag || 'General'}`,
+        extra: json.descripcion || textCompleto, coach: json.coach });
+      setStage('done'); return;
     }
 
-    // Fallback genérico
-    setResult({ tipo: json.tipo || 'Captura', icon: 'sparkle',
-      destino: 'Notas · General',
-      extra: json.descripcion || textCompleto,
-      coach: json.coach || 'Guardado.' });
+    // ─ Resto: agenda, habito, nutricion, meta, diario, captura ─
+    const tipoMap = {
+      agenda: { l: 'Agenda', icon: 'cal', d: 'Agenda · próximo evento' },
+      habito: { l: 'Hábito', icon: 'dumbbell', d: 'Hábitos · Gym' },
+      nutricion: { l: 'Nutrición', icon: 'apple', d: 'Nutrición · Comidas del día' },
+      meta: { l: 'Meta', icon: 'target', d: 'Metas · Activas' },
+      diario: { l: 'Diario', icon: 'journal', d: 'Diario · Entrada de hoy' },
+    };
+    const m = tipoMap[json.tipo];
+    setResult({ tipo: m ? m.l : 'Captura', icon: m ? m.icon : 'sparkle',
+      destino: m ? m.d : 'Notas · General',
+      extra: json.descripcion || textCompleto, coach: json.coach || 'Guardado.' });
     setStage('done');
   };
 
-  const enviar = async () => {
+  const enviar = () => {
     if (!text.trim()) return;
     const textCompleto = text.trim();
     setStage('analyzing');
-
-    const key = localStorage.getItem('nucleo_api_key');
-    if (key) {
-      try {
-        const p = getPatrimonio();
-        const prompt = `Sos el asistente de "Núcleo", app de segundo cerebro de Agus (DJ argentino).
-Patrimonio actual: Banco Galicia $${p.arsBanco}, Efectivo $${p.arsEfectivo}, Mercado Pago $${p.arsMercadoPago||0}, USD $${p.usdEfectivo}.
-Interpretá el mensaje y devolvé SOLO JSON válido, sin texto extra.
-
-Tipos: actualizar_saldo (cuando dice cuánto TIENE en algún lugar, no es gasto), gasto, ingreso, tarea, nota, agenda, habito, captura.
-
-JSON a devolver:
-{"tipo":"...","monto":número_o_null,"moneda":"ARS","campo":"arsBanco|arsEfectivo|arsMercadoPago|usdEfectivo|null","fuente":"banco|efectivo|mercadopago|null","necesita_fuente":true_o_false,"descripcion":"texto limpio","categoria":"Comida|Combustible|Cafés|Salud|Ropa|Variable|null","coach":"respuesta corta rioplatense"}
-
-Reglas:
-- "tengo X en banco/galicia/mercadopago/efectivo" → actualizar_saldo
-- "gasté/pagué/compré X" → gasto; si menciona banco/galicia/débito → fuente:banco, necesita_fuente:false; si menciona mercado pago → fuente:mercadopago, necesita_fuente:false; si no menciona → necesita_fuente:true
-- "cobré/me pagaron/ingresé" → ingreso
-- "tengo que/recordar/llamar" → tarea
-- números como "46 000" o "46.000" son el mismo número: 46000
-
-Mensaje: "${textCompleto}"`;
-
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
-          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300,
-            messages: [{ role: 'user', content: prompt }] }),
-        });
-        const data = await res.json();
-        const rawText = data.content?.[0]?.text || '{}';
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        const json = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);
-        aplicarAccion(json, textCompleto);
-        return;
-      } catch(e) {
-        // Fallback a regex si falla la IA
-      }
-    }
-
-    // Fallback sin IA (regex)
-    const items = parsearGastos(textCompleto);
-    const total = items.reduce((s, g) => s + g.m, 0);
-    if (items.length > 0 && total > 0) {
-      setGastosPendientes({ items, total });
-      setStage('fuente');
-      return;
-    }
-    setResult(categorizarTranscript(textCompleto));
-    setStage('done');
+    setTimeout(() => {
+      const json = interpretarMensaje(textCompleto);
+      aplicarAccion(json, textCompleto);
+    }, 300);
   };
 
   const confirmarFuente = (fuente) => {
     setStage('analyzing');
-    const { items, total } = gastosPendientes;
+    const { items, total, esIngreso } = gastosPendientes;
     const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-    const existing = loadLS('nucleo_gastos_var', []);
-    const nuevos = items.map(g => ({ ...g, fecha, fuente }));
-    saveLS('nucleo_gastos_var', [...nuevos, ...existing]);
-    descontarPatrimonio(total, fuente);
     const fuenteLabel = fuente === 'banco' ? 'Banco Galicia' : fuente === 'mercadopago' ? 'Mercado Pago' : 'Efectivo';
-    setTimeout(() => {
+
+    if (esIngreso) {
+      // Sumar al patrimonio
+      const p = getPatrimonio();
+      if (fuente === 'efectivo') p.arsEfectivo += total;
+      if (fuente === 'banco') p.arsBanco += total;
+      if (fuente === 'mercadopago') p.arsMercadoPago = (p.arsMercadoPago || 0) + total;
+      setPatrimonio(p);
+      setResult({ tipo: 'Ingreso', icon: 'money',
+        destino: `Finanzas · ${fuenteLabel}`,
+        extra: `+${fmt(total)} en ${fuenteLabel}`,
+        coach: 'Ingreso registrado y sumado.' });
+    } else {
+      // Descontar del patrimonio
+      const existing = loadLS('nucleo_gastos_var', []);
+      const nuevos = items.map(g => ({ ...g, fecha, fuente }));
+      saveLS('nucleo_gastos_var', [...nuevos, ...existing]);
+      descontarPatrimonio(total, fuente);
       setResult({ tipo: items.length > 1 ? 'Gastos múltiples' : 'Gasto', icon: 'money',
         destino: items.length > 1 ? `${items.length} gastos registrados` : `Gastos · ${items[0].cat}`,
         extra: `−${fmt(total)} de ${fuenteLabel}`,
         coach: items.length > 1 ? `${items.length} movimientos anotados.` : 'Anotado y descontado.' });
-      setStage('done');
-    }, 400);
+    }
+    setStage('done');
   };
 
   return (
@@ -2417,16 +2444,62 @@ function FinanzasScreen() {
 }
 
 function EditSaldoModal({ label, valor, onSave, onClose }) {
-  const [val, setVal] = React.useState(String(valor));
+  const [modo, setModo] = React.useState('set'); // set | add | sub
+  const [val, setVal] = React.useState('');
+
+  const calcularNuevo = () => {
+    const n = parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
+    if (modo === 'add') return valor + n;
+    if (modo === 'sub') return Math.max(0, valor - n);
+    return n;
+  };
+
+  const preview = val ? calcularNuevo() : null;
+
+  const modos = [
+    { v: 'set', l: 'Reemplazar' },
+    { v: 'add', l: '+ Sumar' },
+    { v: 'sub', l: '− Restar' },
+  ];
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ background: PALETTE.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 320 }}>
-        <div style={{ fontSize: 13, color: PALETTE.text3, marginBottom: 12 }}>{label}</div>
-        <input type="number" value={val} onChange={e => setVal(e.target.value)} autoFocus
-          style={{ width: '100%', background: PALETTE.surfaceStrong, border: `0.5px solid ${PALETTE.border}`, borderRadius: 12, padding: '12px 14px', color: PALETTE.text, fontSize: 20, fontWeight: 600, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 16 }}/>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: PALETTE.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 340 }}>
+        <div style={{ fontSize: 13, color: PALETTE.text3, marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: 22, fontWeight: 600, color: PALETTE.text, marginBottom: 16, fontVariantNumeric: 'tabular-nums' }}>
+          Actual: {fmt(valor)}
+        </div>
+
+        {/* Selector de modo */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+          {modos.map(m => (
+            <button key={m.v} onClick={() => setModo(m.v)} style={{
+              flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              background: modo === m.v ? '#fff' : PALETTE.surfaceStrong,
+              color: modo === m.v ? '#000' : PALETTE.text3,
+              border: 'none',
+            }}>{m.l}</button>
+          ))}
+        </div>
+
+        <input
+          type="number"
+          autoFocus
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          placeholder={modo === 'set' ? 'Nuevo saldo...' : modo === 'add' ? 'Cuánto sumar...' : 'Cuánto restar...'}
+          style={{ width: '100%', background: PALETTE.surfaceStrong, border: `0.5px solid ${PALETTE.border}`, borderRadius: 12, padding: '12px 14px', color: PALETTE.text, fontSize: 20, fontWeight: 600, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+        />
+
+        {preview !== null && (
+          <div style={{ fontSize: 13, color: PALETTE.accent, marginBottom: 14, textAlign: 'center' }}>
+            → Nuevo saldo: {fmt(preview)}
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 12, background: PALETTE.surfaceStrong, color: PALETTE.text2, border: 'none', fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={() => { onSave(+val); onClose(); }} style={{ flex: 1, padding: 12, borderRadius: 12, background: '#fff', color: '#000', border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Guardar</button>
+          <button onClick={() => { if (val) { onSave(calcularNuevo()); onClose(); } }} style={{ flex: 1, padding: 12, borderRadius: 12, background: val ? '#fff' : PALETTE.surfaceStrong, color: val ? '#000' : PALETTE.text3, border: 'none', fontSize: 14, fontWeight: 600, cursor: val ? 'pointer' : 'default' }}>Guardar</button>
         </div>
       </div>
     </div>
