@@ -2443,9 +2443,10 @@ function FinanzasScreen() {
   );
 }
 
-function EditSaldoModal({ label, valor, onSave, onClose }) {
-  const [modo, setModo] = React.useState('set'); // set | add | sub
+function EditSaldoModal({ label, valor, fuente, gastos, onSave, onClose }) {
+  const [modo, setModo] = React.useState('set');
   const [val, setVal] = React.useState('');
+  const [verGastos, setVerGastos] = React.useState(false);
 
   const calcularNuevo = () => {
     const n = parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
@@ -2455,24 +2456,23 @@ function EditSaldoModal({ label, valor, onSave, onClose }) {
   };
 
   const preview = val ? calcularNuevo() : null;
+  const gastosDeEsta = fuente && gastos ? gastos.filter(g => g.fuente === fuente) : [];
 
-  const modos = [
-    { v: 'set', l: 'Reemplazar' },
-    { v: 'add', l: '+ Sumar' },
-    { v: 'sub', l: '− Restar' },
-  ];
+  if (verGastos && fuente) {
+    return <GastosDetalleModal fuente={fuente} gastos={gastos} onClose={() => setVerGastos(false)} />;
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ background: PALETTE.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 340 }}>
         <div style={{ fontSize: 13, color: PALETTE.text3, marginBottom: 4 }}>{label}</div>
         <div style={{ fontSize: 22, fontWeight: 600, color: PALETTE.text, marginBottom: 16, fontVariantNumeric: 'tabular-nums' }}>
-          Actual: {fmt(valor)}
+          {fmt(valor)}
         </div>
 
         {/* Selector de modo */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-          {modos.map(m => (
+          {[{ v: 'set', l: 'Reemplazar' }, { v: 'add', l: '+ Sumar' }, { v: 'sub', l: '− Restar' }].map(m => (
             <button key={m.v} onClick={() => setModo(m.v)} style={{
               flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
               background: modo === m.v ? '#fff' : PALETTE.surfaceStrong,
@@ -2492,15 +2492,25 @@ function EditSaldoModal({ label, valor, onSave, onClose }) {
         />
 
         {preview !== null && (
-          <div style={{ fontSize: 13, color: PALETTE.accent, marginBottom: 14, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: PALETTE.accent, marginBottom: 12, textAlign: 'center' }}>
             → Nuevo saldo: {fmt(preview)}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: gastosDeEsta.length > 0 ? 10 : 0 }}>
           <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 12, background: PALETTE.surfaceStrong, color: PALETTE.text2, border: 'none', fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
           <button onClick={() => { if (val) { onSave(calcularNuevo()); onClose(); } }} style={{ flex: 1, padding: 12, borderRadius: 12, background: val ? '#fff' : PALETTE.surfaceStrong, color: val ? '#000' : PALETTE.text3, border: 'none', fontSize: 14, fontWeight: 600, cursor: val ? 'pointer' : 'default' }}>Guardar</button>
         </div>
+
+        {gastosDeEsta.length > 0 && (
+          <button onClick={() => setVerGastos(true)} style={{
+            width: '100%', padding: '11px', borderRadius: 12,
+            background: 'transparent', border: `0.5px solid ${PALETTE.border}`,
+            color: PALETTE.text3, fontSize: 13, cursor: 'pointer',
+          }}>
+            Ver {gastosDeEsta.length} gasto{gastosDeEsta.length !== 1 ? 's' : ''} registrados →
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2587,8 +2597,8 @@ function FinResumen() {
   const gastosVar = useLS('nucleo_gastos_var', []);
   const totalVar = gastosVar.reduce((s, g) => s + g.m, 0);
   const totalFijosARS = DATA.gastosFijosARS.reduce((s, g) => s + g.m, 0);
-  const [editSaldo, setEditSaldo] = React.useState(null); // 'efectivo' | 'banco' | 'usd'
-  const [detalleGastos, setDetalleGastos] = React.useState(null); // 'efectivo' | 'banco'
+  const [editSaldo, setEditSaldo] = React.useState(null);
+  const [detalleGastos, setDetalleGastos] = React.useState(null);
 
   const guardarSaldo = (campo, valor) => {
     const updated = { ...getPatrimonio(), [campo]: valor };
@@ -2639,7 +2649,7 @@ function FinResumen() {
             { n: 'Mercado Pago', v: p.arsMercadoPago || 0, c: '#00B1EA', campo: 'arsMercadoPago', fuente: 'mercadopago' },
             { n: 'USD efectivo', v: p.usdEfectivo, c: PALETTE.amber, campo: 'usdEfectivo', usd: true },
           ].map((row, i) => (
-            <button key={i} onClick={() => row.fuente ? setDetalleGastos(row.fuente) : setEditSaldo(row.campo)} style={{
+            <button key={i} onClick={() => setEditSaldo({ campo: row.campo, fuente: row.fuente || null })} style={{
               display: 'flex', alignItems: 'center', padding: '14px 18px', gap: 12, width: '100%',
               borderTop: i > 0 ? `0.5px solid ${PALETTE.border}` : 'none',
               background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
@@ -2677,9 +2687,11 @@ function FinResumen() {
 
       {editSaldo && (
         <EditSaldoModal
-          label={editSaldo === 'arsEfectivo' ? 'Efectivo ARS' : editSaldo === 'arsBanco' ? 'Banco Galicia' : editSaldo === 'arsMercadoPago' ? 'Mercado Pago' : 'USD efectivo'}
-          valor={p[editSaldo]}
-          onSave={(v) => guardarSaldo(editSaldo, v)}
+          label={{ arsEfectivo: 'Efectivo ARS', arsBanco: 'Banco Galicia', arsMercadoPago: 'Mercado Pago', usdEfectivo: 'USD efectivo' }[editSaldo.campo]}
+          valor={p[editSaldo.campo] || 0}
+          fuente={editSaldo.fuente}
+          gastos={gastosVar}
+          onSave={(v) => guardarSaldo(editSaldo.campo, v)}
           onClose={() => setEditSaldo(null)}
         />
       )}
