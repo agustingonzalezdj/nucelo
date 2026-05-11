@@ -1099,7 +1099,7 @@ function useLS(key, fallback) {
 }
 
 // Patrimonio inicial — solo se usa si no hay nada en localStorage
-const PATRIMONIO_INICIAL = { arsBanco: 511917, arsEfectivo: 1850000, usdEfectivo: 4500 };
+const PATRIMONIO_INICIAL = { arsBanco: 511917, arsEfectivo: 1850000, usdEfectivo: 4500, arsMercadoPago: 0 };
 
 function getPatrimonio() { return loadLS('nucleo_patrimonio', PATRIMONIO_INICIAL); }
 function setPatrimonio(p) { saveLS('nucleo_patrimonio', p); }
@@ -1109,6 +1109,7 @@ function descontarPatrimonio(monto, fuente) {
   const p = getPatrimonio();
   if (fuente === 'efectivo') p.arsEfectivo = Math.max(0, p.arsEfectivo - monto);
   if (fuente === 'banco') p.arsBanco = Math.max(0, p.arsBanco - monto);
+  if (fuente === 'mercadopago') p.arsMercadoPago = Math.max(0, (p.arsMercadoPago || 0) - monto);
   setPatrimonio(p);
 }
 
@@ -1120,6 +1121,7 @@ const DATA = {
     arsBanco: 511917,
     arsEfectivo: 1850000,
     usdEfectivo: 4500,
+    arsMercadoPago: 0,
   },
 
   gastosFijosARS: [
@@ -1327,25 +1329,136 @@ function VoiceModal({ onClose, onSaved }) {
 
   const esGasto = (t) => /gast[eé]|compr[eé]|pagu[eé]|cost[oó]|salió|desembolsé|\$\s*\d|\d+\s*(pesos|ars)/i.test(t);
 
-  const enviar = () => {
+  const aplicarAccion = (json, textCompleto) => {
+    const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    const fuenteLabel = (f) => f === 'banco' ? 'Banco Galicia' : f === 'mercadopago' ? 'Mercado Pago' : 'Efectivo';
+
+    if (json.tipo === 'actualizar_saldo' && json.campo && json.monto != null) {
+      const p = getPatrimonio();
+      p[json.campo] = json.monto;
+      setPatrimonio(p);
+      const labels = { arsBanco: 'Banco Galicia', arsEfectivo: 'Efectivo', arsMercadoPago: 'Mercado Pago', usdEfectivo: 'USD efectivo' };
+      setResult({ tipo: 'Saldo actualizado', icon: 'money',
+        destino: `Finanzas · ${labels[json.campo] || json.campo}`,
+        extra: `Nuevo saldo: ${json.moneda === 'USD' ? 'US$' : '$'}${json.monto.toLocaleString('es-AR')}`,
+        coach: json.coach || 'Saldo actualizado.' });
+      setStage('done');
+      return;
+    }
+
+    if (json.tipo === 'gasto' && json.monto > 0) {
+      if (!json.necesita_fuente && json.fuente) {
+        // Fuente conocida → guardar directo
+        const existing = loadLS('nucleo_gastos_var', []);
+        saveLS('nucleo_gastos_var', [{ c: textCompleto, cat: json.categoria || 'Variable', m: json.monto, fecha, fuente: json.fuente }, ...existing]);
+        descontarPatrimonio(json.monto, json.fuente);
+        setResult({ tipo: 'Gasto', icon: 'money',
+          destino: `Gastos · ${json.categoria || 'Variable'}`,
+          extra: `−${fmt(json.monto)} de ${fuenteLabel(json.fuente)}`,
+          coach: json.coach || 'Anotado y descontado.' });
+        setStage('done');
+      } else {
+        // Preguntar fuente
+        setGastosPendientes({ items: [{ c: textCompleto, cat: json.categoria || 'Variable', m: json.monto }], total: json.monto });
+        setStage('fuente');
+      }
+      return;
+    }
+
+    if (json.tipo === 'ingreso' && json.monto > 0) {
+      setResult({ tipo: 'Ingreso', icon: 'money',
+        destino: 'Finanzas · Ingresos',
+        extra: `+${fmt(json.monto)} · ${fecha}`,
+        coach: json.coach || 'Ingreso anotado.' });
+      setStage('done');
+      return;
+    }
+
+    if (json.tipo === 'tarea' && json.descripcion) {
+      const tareas = loadLS('nucleo_tareas', []);
+      saveLS('nucleo_tareas', [...tareas, { id: Date.now(), t: json.descripcion, done: false, cuando: 'Hoy' }]);
+      setResult({ tipo: 'Tarea', icon: 'check', destino: 'Tareas · Pendientes',
+        extra: json.descripcion, coach: json.coach || 'Agregado a tareas.' });
+      setStage('done');
+      return;
+    }
+
+    if (json.tipo === 'nota' && json.descripcion) {
+      const notas = loadLS('nucleo_notas', []);
+      saveLS('nucleo_notas', [{ t: json.descripcion, cuerpo: textCompleto, tag: 'General', fecha }, ...notas]);
+      setResult({ tipo: 'Nota', icon: 'note', destino: 'Notas · General',
+        extra: json.descripcion, coach: json.coach || 'Guardado en notas.' });
+      setStage('done');
+      return;
+    }
+
+    // Fallback genérico
+    setResult({ tipo: json.tipo || 'Captura', icon: 'sparkle',
+      destino: 'Notas · General',
+      extra: json.descripcion || textCompleto,
+      coach: json.coach || 'Guardado.' });
+    setStage('done');
+  };
+
+  const enviar = async () => {
     if (!text.trim()) return;
     const textCompleto = text.trim();
+    setStage('analyzing');
+
+    const key = localStorage.getItem('nucleo_api_key');
+    if (key) {
+      try {
+        const p = getPatrimonio();
+        const prompt = `Sos el asistente de "Núcleo", app de segundo cerebro de Agus (DJ argentino).
+Patrimonio actual: Banco Galicia $${p.arsBanco}, Efectivo $${p.arsEfectivo}, Mercado Pago $${p.arsMercadoPago||0}, USD $${p.usdEfectivo}.
+Interpretá el mensaje y devolvé SOLO JSON válido, sin texto extra.
+
+Tipos: actualizar_saldo (cuando dice cuánto TIENE en algún lugar, no es gasto), gasto, ingreso, tarea, nota, agenda, habito, captura.
+
+JSON a devolver:
+{"tipo":"...","monto":número_o_null,"moneda":"ARS","campo":"arsBanco|arsEfectivo|arsMercadoPago|usdEfectivo|null","fuente":"banco|efectivo|mercadopago|null","necesita_fuente":true_o_false,"descripcion":"texto limpio","categoria":"Comida|Combustible|Cafés|Salud|Ropa|Variable|null","coach":"respuesta corta rioplatense"}
+
+Reglas:
+- "tengo X en banco/galicia/mercadopago/efectivo" → actualizar_saldo
+- "gasté/pagué/compré X" → gasto; si menciona banco/galicia/débito → fuente:banco, necesita_fuente:false; si menciona mercado pago → fuente:mercadopago, necesita_fuente:false; si no menciona → necesita_fuente:true
+- "cobré/me pagaron/ingresé" → ingreso
+- "tengo que/recordar/llamar" → tarea
+- números como "46 000" o "46.000" son el mismo número: 46000
+
+Mensaje: "${textCompleto}"`;
+
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 300,
+            messages: [{ role: 'user', content: prompt }] }),
+        });
+        const data = await res.json();
+        const rawText = data.content?.[0]?.text || '{}';
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        const json = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);
+        aplicarAccion(json, textCompleto);
+        return;
+      } catch(e) {
+        // Fallback a regex si falla la IA
+      }
+    }
+
+    // Fallback sin IA (regex)
     const items = parsearGastos(textCompleto);
     const total = items.reduce((s, g) => s + g.m, 0);
-
-    // Si detecta gastos con montos → preguntar fuente
     if (items.length > 0 && total > 0) {
       setGastosPendientes({ items, total });
       setStage('fuente');
       return;
     }
-
-    // Si no hay gastos con montos → categorizar directo
-    setStage('analyzing');
-    setTimeout(() => {
-      setResult(categorizarTranscript(textCompleto));
-      setStage('done');
-    }, 700);
+    setResult(categorizarTranscript(textCompleto));
+    setStage('done');
   };
 
   const confirmarFuente = (fuente) => {
@@ -1356,7 +1469,7 @@ function VoiceModal({ onClose, onSaved }) {
     const nuevos = items.map(g => ({ ...g, fecha, fuente }));
     saveLS('nucleo_gastos_var', [...nuevos, ...existing]);
     descontarPatrimonio(total, fuente);
-    const fuenteLabel = fuente === 'banco' ? 'Banco Galicia' : 'Efectivo';
+    const fuenteLabel = fuente === 'banco' ? 'Banco Galicia' : fuente === 'mercadopago' ? 'Mercado Pago' : 'Efectivo';
     setTimeout(() => {
       setResult({ tipo: items.length > 1 ? 'Gastos múltiples' : 'Gasto', icon: 'money',
         destino: items.length > 1 ? `${items.length} gastos registrados` : `Gastos · ${items[0].cat}`,
@@ -1443,6 +1556,7 @@ function VoiceModal({ onClose, onSaved }) {
               {[
                 { v: 'efectivo', l: 'Efectivo', sub: 'Plata en mano', icon: 'money' },
                 { v: 'banco', l: 'Banco Galicia', sub: 'Débito / transferencia', icon: 'money' },
+                { v: 'mercadopago', l: 'Mercado Pago', sub: 'Billetera virtual', icon: 'money' },
               ].map(opt => (
                 <button key={opt.v} onClick={() => confirmarFuente(opt.v)} style={{
                   width: '100%', padding: '18px 20px', borderRadius: 16, cursor: 'pointer',
@@ -2320,16 +2434,16 @@ function EditSaldoModal({ label, valor, onSave, onClose }) {
 }
 
 function GastosDetalleModal({ fuente, gastos, onClose }) {
-  const label = fuente === 'banco' ? 'Banco Galicia' : 'Efectivo';
+  const label = fuente === 'banco' ? 'Banco Galicia' : fuente === 'mercadopago' ? 'Mercado Pago' : 'Efectivo';
   const items = gastos.filter(g => g.fuente === fuente);
   const total = items.reduce((s, g) => s + g.m, 0);
 
   const borrar = (idx) => {
     const g = gastos[idx];
-    // Reintegrar al patrimonio
     const p = getPatrimonio();
     if (g.fuente === 'efectivo') p.arsEfectivo += g.m;
     if (g.fuente === 'banco') p.arsBanco += g.m;
+    if (g.fuente === 'mercadopago') p.arsMercadoPago = (p.arsMercadoPago || 0) + g.m;
     setPatrimonio(p);
     saveLS('nucleo_gastos_var', gastos.filter((_, j) => j !== idx));
   };
@@ -2337,10 +2451,10 @@ function GastosDetalleModal({ fuente, gastos, onClose }) {
   const editarMonto = (idx, nuevoMonto) => {
     const g = gastos[idx];
     const diff = nuevoMonto - g.m;
-    // Ajustar patrimonio por la diferencia
     const p = getPatrimonio();
     if (g.fuente === 'efectivo') p.arsEfectivo = Math.max(0, p.arsEfectivo - diff);
     if (g.fuente === 'banco') p.arsBanco = Math.max(0, p.arsBanco - diff);
+    if (g.fuente === 'mercadopago') p.arsMercadoPago = Math.max(0, (p.arsMercadoPago || 0) - diff);
     setPatrimonio(p);
     const updated = gastos.map((gg, j) => j === idx ? { ...gg, m: nuevoMonto } : gg);
     saveLS('nucleo_gastos_var', updated);
@@ -2395,7 +2509,7 @@ function GastosDetalleModal({ fuente, gastos, onClose }) {
 
 function FinResumen() {
   const p = useLS('nucleo_patrimonio', PATRIMONIO_INICIAL);
-  const totalArs = p.arsBanco + p.arsEfectivo;
+  const totalArs = p.arsBanco + p.arsEfectivo + (p.arsMercadoPago || 0);
   const now = new Date();
   const gastosVar = useLS('nucleo_gastos_var', []);
   const totalVar = gastosVar.reduce((s, g) => s + g.m, 0);
@@ -2449,6 +2563,7 @@ function FinResumen() {
           {[
             { n: 'Efectivo ARS', v: p.arsEfectivo, c: PALETTE.accent, campo: 'arsEfectivo', fuente: 'efectivo' },
             { n: 'Banco Galicia', v: p.arsBanco, c: PALETTE.cool, campo: 'arsBanco', fuente: 'banco' },
+            { n: 'Mercado Pago', v: p.arsMercadoPago || 0, c: '#00B1EA', campo: 'arsMercadoPago', fuente: 'mercadopago' },
             { n: 'USD efectivo', v: p.usdEfectivo, c: PALETTE.amber, campo: 'usdEfectivo', usd: true },
           ].map((row, i) => (
             <button key={i} onClick={() => row.fuente ? setDetalleGastos(row.fuente) : setEditSaldo(row.campo)} style={{
@@ -2489,7 +2604,7 @@ function FinResumen() {
 
       {editSaldo && (
         <EditSaldoModal
-          label={editSaldo === 'arsEfectivo' ? 'Efectivo ARS' : editSaldo === 'arsBanco' ? 'Banco Galicia' : 'USD efectivo'}
+          label={editSaldo === 'arsEfectivo' ? 'Efectivo ARS' : editSaldo === 'arsBanco' ? 'Banco Galicia' : editSaldo === 'arsMercadoPago' ? 'Mercado Pago' : 'USD efectivo'}
           valor={p[editSaldo]}
           onSave={(v) => guardarSaldo(editSaldo, v)}
           onClose={() => setEditSaldo(null)}
@@ -2520,10 +2635,10 @@ function FinGastos() {
 
   const borrar = (i) => {
     const g = gastos[i];
-    // Reintegrar al patrimonio al borrar
     const p = getPatrimonio();
     if (g.fuente === 'efectivo') p.arsEfectivo += g.m;
     if (g.fuente === 'banco') p.arsBanco += g.m;
+    if (g.fuente === 'mercadopago') p.arsMercadoPago = (p.arsMercadoPago || 0) + g.m;
     setPatrimonio(p);
     saveLS('nucleo_gastos_var', gastos.filter((_, j) => j !== i));
   };
@@ -2561,7 +2676,7 @@ function FinGastos() {
               placeholder="Monto en ARS"
               style={{ background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`, borderRadius: 10, padding: '8px 12px', color: PALETTE.text2, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}/>
             <div style={{ display: 'flex', gap: 8 }}>
-              {[{ v: 'efectivo', l: '💵 Efectivo' }, { v: 'banco', l: '🏦 Banco Galicia' }].map(opt => (
+              {[{ v: 'efectivo', l: '💵 Efectivo' }, { v: 'banco', l: '🏦 Banco Galicia' }, { v: 'mercadopago', l: '💙 Mercado Pago' }].map(opt => (
                 <button key={opt.v} onClick={() => setForm(f => ({...f, fuente: opt.v}))} style={{
                   flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer',
                   background: form.fuente === opt.v ? PALETTE.accent : PALETTE.surface,
