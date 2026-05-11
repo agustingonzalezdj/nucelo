@@ -1,40 +1,19 @@
-const CACHE = 'nucleo-v9';
-const ASSETS = [
-  'nucleo.html',
-  'https://unpkg.com/react@18/umd/react.production.min.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
-  'https://unpkg.com/@babel/standalone/babel.min.js',
-];
+const CACHE = 'nucleo-v10';
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+  e.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
 
+// Sin caché — siempre red. Así cada cambio llega inmediatamente.
 self.addEventListener('fetch', e => {
-  // Para llamadas a la API de Anthropic: siempre ir a la red
-  if (e.request.url.includes('anthropic.com')) {
-    return;
-  }
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res && res.status === 200 && (e.request.url.startsWith('https://unpkg.com') || e.request.url.includes('nucleo.html'))) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => cached);
-    })
-  );
+  if (e.request.url.includes('anthropic.com')) return;
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
