@@ -1290,12 +1290,12 @@ function categorizarTranscript(text) {
 
 function VoiceModal({ onClose, onSaved }) {
   const [text, setText] = React.useState('');
-  const [stage, setStage] = React.useState('input'); // input | analyzing | done
+  const [stage, setStage] = React.useState('input'); // input | fuente | analyzing | done
   const [result, setResult] = React.useState(null);
+  const [gastosPendientes, setGastosPendientes] = React.useState(null); // { lineas, total }
   const textareaRef = React.useRef(null);
 
   React.useEffect(() => {
-    // Abrir teclado automáticamente
     setTimeout(() => { if (textareaRef.current) textareaRef.current.focus(); }, 100);
   }, []);
 
@@ -1305,49 +1305,64 @@ function VoiceModal({ onClose, onSaved }) {
     return () => clearTimeout(id);
   }, [stage, result]);
 
+  // Parsear gastos del texto
+  const parsearGastos = (textCompleto) => {
+    const lineas = textCompleto.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').map(l => l.trim()).filter(Boolean);
+    const items = [];
+    lineas.forEach(linea => {
+      const lt = linea.toLowerCase();
+      const lNorm = lt.replace(/(\d)\s+(\d)/g, '$1$2');
+      const montoMatch = lNorm.match(/\$?\s*(\d[\d.,]*)\s*(mil|k\b)?/);
+      if (!montoMatch) return;
+      let monto = parseFloat(montoMatch[1].replace(/\./g, '').replace(',', '.'));
+      if (/mil|k\b/.test(montoMatch[2] || '')) monto *= 1000;
+      if (!monto || monto <= 0) return;
+      const cats = { super: 'Comida', supermercado: 'Comida', combustible: 'Combustible', nafta: 'Combustible', café: 'Cafés', farmacia: 'Salud', ropa: 'Ropa', comida: 'Comida' };
+      const cat = Object.entries(cats).find(([k]) => lt.includes(k))?.[1] || 'Variable';
+      items.push({ c: linea, cat, m: monto });
+    });
+    return items;
+  };
+
+  const esGasto = (t) => /gast[eé]|compr[eé]|pagu[eé]|cost[oó]|salió|desembolsé|\$\s*\d|\d+\s*(pesos|ars)/i.test(t);
+
   const enviar = () => {
     if (!text.trim()) return;
+    const textCompleto = text.trim();
+    const items = parsearGastos(textCompleto);
+    const total = items.reduce((s, g) => s + g.m, 0);
+
+    // Si detecta gastos con montos → preguntar fuente
+    if (items.length > 0 && total > 0) {
+      setGastosPendientes({ items, total });
+      setStage('fuente');
+      return;
+    }
+
+    // Si no hay gastos con montos → categorizar directo
     setStage('analyzing');
     setTimeout(() => {
-      const lineas = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-      // Si hay múltiples líneas, procesar cada una como gasto separado
-      if (lineas.length > 1) {
-        const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-        const existing = loadLS('nucleo_gastos_var', []);
-        const nuevos = [];
-        let totalDescontado = { efectivo: 0, banco: 0 };
-        lineas.forEach(linea => {
-          const lt = linea.toLowerCase();
-          const lNorm = lt.replace(/(\d)\s+(\d)/g, '$1$2');
-          const montoMatch = lNorm.match(/\$?\s*(\d[\d.,]*)\s*(mil|k\b)?/);
-          if (!montoMatch) return;
-          let monto = parseFloat(montoMatch[1].replace(/\./g, '').replace(',', '.'));
-          if (/mil|k\b/.test(montoMatch[2] || '')) monto *= 1000;
-          if (!monto || monto <= 0) return;
-          const fuente = /banco|galicia|transfer|débito|debito|cuenta/.test(lt) ? 'banco' : 'efectivo';
-          const cats = { super: 'Comida', supermercado: 'Comida', combustible: 'Combustible', nafta: 'Combustible', café: 'Cafés', farmacia: 'Salud', ropa: 'Ropa', comida: 'Comida' };
-          const cat = Object.entries(cats).find(([k]) => lt.includes(k))?.[1] || 'Variable';
-          nuevos.push({ c: linea, cat, m: monto, fecha, fuente });
-          totalDescontado[fuente] += monto;
-        });
-        if (nuevos.length > 0) {
-          saveLS('nucleo_gastos_var', [...nuevos, ...existing]);
-          if (totalDescontado.efectivo > 0) descontarPatrimonio(totalDescontado.efectivo, 'efectivo');
-          if (totalDescontado.banco > 0) descontarPatrimonio(totalDescontado.banco, 'banco');
-        }
-        const total = nuevos.reduce((s, g) => s + g.m, 0);
-        setResult({ tipo: 'Gastos múltiples', icon: 'money',
-          destino: `${nuevos.length} gastos registrados`,
-          extra: total > 0 ? `−${fmt(total)} total` : '',
-          coach: `${nuevos.length} movimientos anotados.` });
-        setStage('done');
-        return;
-      }
-      // Una sola línea — lógica normal
-      const r = categorizarTranscript(text.trim());
-      setResult(r);
+      setResult(categorizarTranscript(textCompleto));
       setStage('done');
     }, 700);
+  };
+
+  const confirmarFuente = (fuente) => {
+    setStage('analyzing');
+    const { items, total } = gastosPendientes;
+    const fecha = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    const existing = loadLS('nucleo_gastos_var', []);
+    const nuevos = items.map(g => ({ ...g, fecha, fuente }));
+    saveLS('nucleo_gastos_var', [...nuevos, ...existing]);
+    descontarPatrimonio(total, fuente);
+    const fuenteLabel = fuente === 'banco' ? 'Banco Galicia' : 'Efectivo';
+    setTimeout(() => {
+      setResult({ tipo: items.length > 1 ? 'Gastos múltiples' : 'Gasto', icon: 'money',
+        destino: items.length > 1 ? `${items.length} gastos registrados` : `Gastos · ${items[0].cat}`,
+        extra: `−${fmt(total)} de ${fuenteLabel}`,
+        coach: items.length > 1 ? `${items.length} movimientos anotados.` : 'Anotado y descontado.' });
+      setStage('done');
+    }, 400);
   };
 
   return (
@@ -1366,6 +1381,7 @@ function VoiceModal({ onClose, onSaved }) {
       }}>
         <div style={{ fontSize: 11, fontWeight: 400, letterSpacing: 2, textTransform: 'uppercase', color: PALETTE.text3 }}>
           {stage === 'input' && 'Escribí o dictá'}
+          {stage === 'fuente' && '¿Con qué pagaste?'}
           {stage === 'analyzing' && 'Analizando...'}
           {stage === 'done' && 'Guardado'}
         </div>
@@ -1412,6 +1428,38 @@ function VoiceModal({ onClose, onSaved }) {
               Enviar
             </button>
           </>
+        )}
+
+        {stage === 'fuente' && gastosPendientes && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 28 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, color: PALETTE.text3, marginBottom: 6 }}>
+                {gastosPendientes.items.length} gasto{gastosPendientes.items.length > 1 ? 's' : ''} · {fmt(gastosPendientes.total)} total
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 300, color: PALETTE.text }}>¿Con qué pagaste?</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { v: 'efectivo', l: 'Efectivo', sub: 'Plata en mano', icon: 'money' },
+                { v: 'banco', l: 'Banco Galicia', sub: 'Débito / transferencia', icon: 'money' },
+              ].map(opt => (
+                <button key={opt.v} onClick={() => confirmarFuente(opt.v)} style={{
+                  width: '100%', padding: '18px 20px', borderRadius: 16, cursor: 'pointer',
+                  background: PALETTE.surface, border: `0.5px solid ${PALETTE.border}`,
+                  display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left',
+                }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: PALETTE.surfaceStrong,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: PALETTE.text, flexShrink: 0 }}>
+                    <Icon name={opt.icon} size={18} sw={1.4}/>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 500, color: PALETTE.text }}>{opt.l}</div>
+                    <div style={{ fontSize: 12, color: PALETTE.text3, marginTop: 2 }}>{opt.sub}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {stage === 'analyzing' && (
